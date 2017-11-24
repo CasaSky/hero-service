@@ -1,18 +1,40 @@
-package de.haw.heroservice.component;
+package de.haw.heroservice.component.entities;
 
+import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
 public class Hero {
 
+    @Id
+    @GeneratedValue
+    private Integer id;
+
     private String user;
-    private boolean idle;
+    private Boolean idle;
+
+    @Column(name = "group_lol")
     private String group;
+
+    @OneToMany(cascade = CascadeType.ALL)
     private List<Hiring> hirings = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL)
     private List<Assignment> assignments = new ArrayList<>();
-    private List<Message> messages;
+
+    @OneToMany(cascade = CascadeType.ALL)
+    private List<Message> messages = new ArrayList<>();
 
     public Hero() {}
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public String getUser() {
         return user;
@@ -30,7 +52,7 @@ public class Hero {
         this.idle = idle;
     }
 
-    public String getGroup() {
+   public String getGroup() {
         return group;
     }
 
@@ -38,8 +60,8 @@ public class Hero {
         this.group = group;
     }
 
-    public void addHiring(Hiring hiring) {
-        this.addHiring(hiring);
+   public void addHiring(Hiring hiring) {
+        hirings.add(hiring);
     }
 
     public List<Hiring> getHirings() {
@@ -50,7 +72,7 @@ public class Hero {
         this.hirings = hirings;
     }
 
-    public List<Assignment> getAssignments() {
+   public List<Assignment> getAssignments() {
         return assignments;
     }
 
