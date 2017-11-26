@@ -1,10 +1,11 @@
 package de.haw.heroservice.controller;
 
-import de.haw.heroservice.component.entities.Hero;
+import de.haw.heroservice.BlackboardService;
+import de.haw.heroservice.component.entities.Assignment;
+import de.haw.heroservice.component.entities.Callback;
 import de.haw.heroservice.component.HeroDto;
 import de.haw.heroservice.component.entities.Hiring;
 import de.haw.heroservice.component.TavernaService;
-import de.haw.heroservice.component.repositories.HeroRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-
-import java.security.Principal;
 
 @RestController
 public class HeroController {
@@ -29,7 +28,7 @@ public class HeroController {
     private TavernaService tavernaService;
 
     @Autowired
-    private HeroRepository heroRepository;
+    private BlackboardService blackboardService;
 
     @RequestMapping(value = "/hero", method = RequestMethod.GET)
     public ResponseEntity<HeroDto> info() {
@@ -40,16 +39,20 @@ public class HeroController {
     @RequestMapping(value = "/hero/hirings", method = RequestMethod.POST)
     public ResponseEntity<?> addHiring(@RequestBody Hiring hiring) {
 
-       // Hero hero = new Hero();//heroRepository.findOne(1);
-
-        /*if (hero.getGroup()!=null) {
-            return new ResponseEntity<>("Can't join the group.", HttpStatus.CONFLICT);
-        }
-
-        hero.setUser(heroDto.getUser());
-        hero.addHiring(hiring);*/
-
         return tavernaService.joinGroup(hiring.getGroup());
+    }
+
+    @RequestMapping(value="/hero/assignments", method = RequestMethod.POST)
+    public ResponseEntity<?> addAssignment(@RequestBody Assignment assignment) {
+
+        return blackboardService.solveTask(assignment);
+    }
+
+    @RequestMapping(value="/hero/callback", method = RequestMethod.POST)
+    public ResponseEntity<?> callback(@RequestBody Callback callback) {
+
+        //TODO finish quest: dont forget required members
+        return null;
     }
 
 }

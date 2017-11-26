@@ -1,13 +1,8 @@
 package de.haw.heroservice.component.entities;
 
-import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
-
-@Entity
 public class Hero {
 
-    @Id
+    /*@Id
     @GeneratedValue
     private Integer id;
 
@@ -86,5 +81,5 @@ public class Hero {
 
     public void setMessages(List<Message> messages) {
         this.messages = messages;
-    }
+    }*/
 }

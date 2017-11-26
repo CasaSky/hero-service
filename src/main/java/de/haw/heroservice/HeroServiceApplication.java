@@ -1,10 +1,7 @@
 package de.haw.heroservice;
 
 import de.haw.heroservice.component.HeroDto;
-import de.haw.heroservice.component.entities.Hero;
-import de.haw.heroservice.component.repositories.HeroRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -24,18 +21,6 @@ public class HeroServiceApplication {
 
 	@Autowired
 	private HeroDto heroDto;
-
-	@Autowired
-	private HeroRepository heroRepository;
-
-	@Bean
-	CommandLineRunner init() {
-		return args -> {
-			Hero hero = new Hero();
-			hero.setUser(heroDto.getUser());
-			heroRepository.save(hero);
-		};
-	}
 
 	@Bean
 	public RestTemplate restTemplate(RestTemplateBuilder builder) {
