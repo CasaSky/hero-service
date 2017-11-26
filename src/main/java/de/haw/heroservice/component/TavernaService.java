@@ -42,12 +42,13 @@ public class TavernaService {
             ResponseEntity<Object> response = restTemplate.exchange(tavernaGroupUrl+tavernaMembersUri, HttpMethod.POST, entity, Object.class);
             HttpStatus statusCode = response.getStatusCode();
             if (statusCode.is2xxSuccessful()) {
+                return new ResponseEntity<>("Hero joined the group.", statusCode);
             }
         } catch (HttpStatusCodeException e) {
 
             System.out.println("Youre cridentials are wrong, please verify.");
             return new ResponseEntity<>(e.getMessage(), e.getStatusCode());
         }
-        return new ResponseEntity<>("Can't join the group.",HttpStatus.CONFLICT);
+        return new ResponseEntity<>("Can't join the group", HttpStatus.CONFLICT);
     }
 }

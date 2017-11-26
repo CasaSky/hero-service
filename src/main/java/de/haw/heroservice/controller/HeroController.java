@@ -12,9 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
+
+import java.security.Principal;
 
 @RestController
 public class HeroController {
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Autowired
     private HeroDto heroDto;
@@ -34,16 +40,16 @@ public class HeroController {
     @RequestMapping(value = "/hero/hirings", method = RequestMethod.POST)
     public ResponseEntity<?> addHiring(@RequestBody Hiring hiring) {
 
+       // Hero hero = new Hero();//heroRepository.findOne(1);
 
-        Hero hero = heroRepository.findOne(1);
-
-        if (hero.getGroup()!=null) {
+        /*if (hero.getGroup()!=null) {
             return new ResponseEntity<>("Can't join the group.", HttpStatus.CONFLICT);
         }
 
         hero.setUser(heroDto.getUser());
-        hero.addHiring(hiring);
+        hero.addHiring(hiring);*/
 
         return tavernaService.joinGroup(hiring.getGroup());
     }
+
 }
