@@ -9,6 +9,8 @@ import com.google.gson.JsonParser;
 import de.haw.heroservice.component.entities.Assignment;
 import de.haw.heroservice.component.entities.Callback;
 import org.aspectj.lang.annotation.Before;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -16,7 +18,6 @@ import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +56,14 @@ public class BlackboardService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         restTemplate.getInterceptors().add(
                 new BasicAuthorizationInterceptor(username, password));
+
+        login(loginUrl); // login and save token
+
+    }
+
+    private void createNewRestTemplate() {
+        restTemplate = new RestTemplate();
+        headers.setContentType(MediaType.APPLICATION_JSON);
     }
 
     public ResponseEntity<?> solveTask(Assignment assignment) {
@@ -71,9 +80,11 @@ public class BlackboardService {
 
         String location = getLocation(task);
 
-        String host = getHost(location);
+        String host = "http://"+getHost(location);
 
-        login(loginUrl); // login and save token
+        createNewRestTemplate();
+
+        headers.set("Authorization", "Token "+loginToken);
 
         String next = getNext(host+resource);
 
@@ -81,8 +92,12 @@ public class BlackboardService {
 
         List<String> stepsTokens = new ArrayList<>();
         for (String step : steps) {
-            stepsTokens.add(getStepToken(step));
+            stepsTokens.add(getStepToken(host+step));
         }
+
+        String deliveryToken = postTokensInNext(stepsTokens, host+next);
+
+
 
 
         Callback callbackRequest = new Callback();
@@ -90,7 +105,7 @@ public class BlackboardService {
         callbackRequest.setTask(assignment.getTask());
         callbackRequest.setResource(assignment.getResource());
         callbackRequest.setMethod(assignment.getMethod());
-        callbackRequest.setData(stepsTokens);
+        callbackRequest.setData(deliveryToken);
         callbackRequest.setUser(userUrl);
         callbackRequest.setMessage(assignment.getMessage());
 
@@ -104,22 +119,38 @@ public class BlackboardService {
         return restTemplate.exchange(callbackUrl, HttpMethod.POST, entity, Object.class);
     }
 
+    private String postTokensInNext(List<String> stepsTokens, String nextUrl) {
+
+        JSONArray jArray = new JSONArray();
+
+        for (String stepToken : stepsTokens) {
+            jArray.put(stepToken);
+        }
+
+        HttpEntity<String> entity = new HttpEntity<>("{\"tokens\":"+jArray+"}",headers);
+
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(nextUrl, HttpMethod.POST, entity, ObjectNode.class);
+
+        return response.getBody().get("token").asText();
+    }
+
     private String getStepToken(String step) {
-        //TODO auth with token header
 
-        ObjectNode objectNode = restTemplate.getForObject(step, ObjectNode.class);
+        HttpEntity<String> entity = new HttpEntity<>("{}",headers);
 
-        return objectNode.get("token").asText();
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(step, HttpMethod.POST, entity, ObjectNode.class);
+
+        return response.getBody().get("token").asText();
     }
 
     private List<String> getSteps(String nextUrl) {
 
-        //TODO auth with token header
 
-        ObjectNode objectNode = restTemplate.getForObject(nextUrl, ObjectNode.class);
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(nextUrl, HttpMethod.GET, entity, ObjectNode.class);
 
-        JsonNode jsonNode = objectNode.get("step_todo");
+        JsonNode jsonNode = response.getBody().get("steps_todo");
 
         List<String> steps = new ArrayList<>();
         for (JsonNode node : jsonNode) {
@@ -131,10 +162,10 @@ public class BlackboardService {
 
     private String getNext(String resourceUrl) {
 
-        //TODO auth with token header
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
-        ObjectNode objectNode = restTemplate.getForObject(resourceUrl, ObjectNode.class);
-        return objectNode.get("next").asText();
+       ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, ObjectNode.class);
+       return response.getBody().get("next").asText();
     }
 
     private String getHost(String locationUri) {

@@ -10,7 +10,7 @@ public class Callback {
     private String task;
     private String resource;
     private String method;
-    private List<String> data;
+    private String data;
     @Value("${url.user}")
     private String user;
     private String message;
@@ -49,11 +49,11 @@ public class Callback {
         this.method = method;
     }
 
-    public List<String> getData() {
+    public String getData() {
         return data;
     }
 
-    public void setData(List<String> data) {
+    public void setData(String data) {
         this.data = data;
     }
 
