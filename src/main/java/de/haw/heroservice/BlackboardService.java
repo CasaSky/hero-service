@@ -61,9 +61,10 @@ public class BlackboardService {
 
     }
 
-    private void createNewRestTemplate() {
+    private void createAuthRestTemplate() {
         restTemplate = new RestTemplate();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Token "+loginToken);
     }
 
     public ResponseEntity<?> solveTask(Assignment assignment) {
@@ -77,25 +78,28 @@ public class BlackboardService {
         String data = assignment.getData();
 
 
-
+        //TODO als data?
         String location = getLocation(task);
-
         String host = "http://"+getHost(location);
 
-        createNewRestTemplate();
+        createAuthRestTemplate();
 
-        headers.set("Authorization", "Token "+loginToken);
-
+        // check if next is required.
         String next = getNext(host+resource);
 
-        List<String> steps = getSteps(host+next);
+        List<String> steps;
+        if (next!=null) {
+            steps = getSteps(host + next);
+        } else {
+            steps = getSteps(host+resource);
+        }
 
         List<String> stepsTokens = new ArrayList<>();
         for (String step : steps) {
             stepsTokens.add(getStepToken(host+step));
         }
 
-        String deliveryToken = postTokensInNext(stepsTokens, host+next);
+       // String deliveryToken = postTokensInNext(stepsTokens, host+next);
 
 
 
@@ -105,7 +109,11 @@ public class BlackboardService {
         callbackRequest.setTask(assignment.getTask());
         callbackRequest.setResource(assignment.getResource());
         callbackRequest.setMethod(assignment.getMethod());
-        callbackRequest.setData(deliveryToken);
+        JSONArray jArray = new JSONArray();
+        for (String stepToken : stepsTokens) {
+            jArray.put(stepToken);
+        }
+        callbackRequest.setData(jArray.toString());
         callbackRequest.setUser(userUrl);
         callbackRequest.setMessage(assignment.getMessage());
 
