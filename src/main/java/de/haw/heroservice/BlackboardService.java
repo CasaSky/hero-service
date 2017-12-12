@@ -193,4 +193,17 @@ public class BlackboardService {
         ObjectNode objectNode = restTemplate.getForObject(urlLogin, ObjectNode.class);
         loginToken = objectNode.get("token").asText();
     }
+
+    public String getUsername(String userUri) {
+
+        ObjectNode objectNode = restTemplate.getForObject(blackboardUrl+userUri, ObjectNode.class);
+        return objectNode.get("name").asText();
+    }
+
+    public ResponseEntity<?> getHero(String heroUrl) {
+
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+
+        return restTemplate.exchange(blackboardUrl+heroUrl, HttpMethod.GET, entity, ObjectNode.class);
+    }
 }
