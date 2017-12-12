@@ -24,8 +24,8 @@ import java.util.List;
 @SpringBootApplication
 public class HeroServiceApplication {
 
-	@Autowired
-	public RestTemplate restTemplate ;
+	//@Autowired
+	//public RestTemplate restTemplate;
 
 	@Autowired
 	private TavernaService tavernaService;
@@ -44,10 +44,10 @@ public class HeroServiceApplication {
 
 
 
-	@Bean
+	@Bean(name = "restTemplate")
 	public RestTemplate restTemplate(RestTemplateBuilder builder) {
-		RestTemplate template = builder.build();
-		List<HttpMessageConverter<?>> converters = template.getMessageConverters();
+	    RestTemplate restTemplate = builder.build();
+		List<HttpMessageConverter<?>> converters = restTemplate.getMessageConverters();
 		for(HttpMessageConverter<?> converter : converters){
 			if(converter instanceof MappingJackson2HttpMessageConverter){
 				try{
@@ -58,8 +58,8 @@ public class HeroServiceApplication {
 			}
 		}
 
-		template = new RestTemplate(getClientHttpRequestFactory());
-		return template;
+        restTemplate = new RestTemplate(getClientHttpRequestFactory());
+		return restTemplate;
 	}
 
 	private ClientHttpRequestFactory getClientHttpRequestFactory() {

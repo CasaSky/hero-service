@@ -8,7 +8,7 @@ public class HeroDto {
 
     @Value("${url}")
     private String url;
-    @Value("${url.user}")
+    @Value("${uri.user}")
     private String user;
     private boolean idle;
     private String group;

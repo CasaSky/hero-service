@@ -5,6 +5,7 @@ import de.haw.heroservice.BlackboardService;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
@@ -47,6 +48,11 @@ public class TavernaService {
 
     private HttpHeaders headers = new HttpHeaders();
     private HttpEntity<String> entity;
+
+    @Autowired
+    public TavernaService(@Qualifier("restTemplate") RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public TavernaService() {
         headers.setContentType(MediaType.APPLICATION_JSON);
