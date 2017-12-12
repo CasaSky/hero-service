@@ -57,14 +57,12 @@ public class HeroController {
     public ResponseEntity<?> addAssignment(@RequestBody Assignment assignment) {
         heroDto.setIdle(true);
         ResponseEntity<?> response = blackboardService.solveTask(assignment);
-        // If task solved and accepted
-        // Callback ok? assignment loeschen and idle auf false
         heroDto.setIdle(!response.getStatusCode().is2xxSuccessful());
         return response;
     }
 
     @RequestMapping(value="/hero/callback", method = RequestMethod.POST)
-    public ResponseEntity<?> callback(@RequestBody Callback callback) {
+    public ResponseEntity<?> callback(@RequestBody Callback callback) { //TODO need only string for data?
         //TODO post tokens in resource, and post result token in quest deliveries.
         return null;
     }
@@ -76,8 +74,9 @@ public class HeroController {
 
     @RequestMapping(value="/hero/election", method = RequestMethod.POST)
     public ResponseEntity<?> election(@RequestBody Election election) {
-        bullyAlgorithm.electHero(heroDto, election);
-        return null;
+        if (!bullyAlgorithm.electHero(heroDto, election)) {
+            addAssignment(election.getJob());
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
     }
-
 }

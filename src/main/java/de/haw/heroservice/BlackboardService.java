@@ -8,6 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import de.haw.heroservice.component.entities.Assignment;
 import de.haw.heroservice.component.entities.Callback;
+import de.haw.heroservice.component.entities.Election;
 import org.aspectj.lang.annotation.Before;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,10 +40,11 @@ public class BlackboardService {
     @Value("${url.login}")
     private String loginUrl;
 
-    @Value("${url.user}")
-    private String userUrl;
+    @Value("${uri.user}")
+    private String userUri;
 
-    private ApacheClient apacheClient = new ApacheClient();
+    @Value("${uri.election}")
+    private String electionUri;
 
     private String loginToken;
 
@@ -65,6 +67,15 @@ public class BlackboardService {
         restTemplate = new RestTemplate();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Token "+loginToken);
+    }
+
+    public ResponseEntity<?> sendResultsToCallback(Assignment assignment) {
+        String callbackAddress = assignment.getCallback();
+        String data = assignment.getData();
+
+        HttpEntity<String> entity = new HttpEntity<>(data, headers);
+
+        return restTemplate.exchange(callbackAddress, HttpMethod.POST, entity, Object.class);
     }
 
     public ResponseEntity<?> solveTask(Assignment assignment) {
@@ -114,10 +125,11 @@ public class BlackboardService {
             jArray.put(stepToken);
         }
         callbackRequest.setData(jArray.toString());
-        callbackRequest.setUser(userUrl);
+        callbackRequest.setUser(userUri);
         callbackRequest.setMessage(assignment.getMessage());
 
-        return postOnCallBack(assignment.getCallback(), callbackRequest);
+        //return postOnCallBack(assignment.getCallback(), callbackRequest); TODO war falsch
+        return sendResultsToCallback(assignment);
     }
 
     private ResponseEntity<?> postOnCallBack(String callbackUrl, Callback callbackRequest) {
@@ -200,10 +212,9 @@ public class BlackboardService {
         return objectNode.get("name").asText();
     }
 
-    public ResponseEntity<?> getHero(String heroUrl) {
+    public ResponseEntity<?> postElection(String heroUrl, Election election) {
 
-        HttpEntity<String> entity = new HttpEntity<>(null,headers);
-
-        return restTemplate.exchange(blackboardUrl+heroUrl, HttpMethod.GET, entity, ObjectNode.class);
+        HttpEntity<Election> entity = new HttpEntity<>(election,headers);
+        return restTemplate.exchange(blackboardUrl+heroUrl+electionUri, HttpMethod.POST, entity, ObjectNode.class);
     }
 }

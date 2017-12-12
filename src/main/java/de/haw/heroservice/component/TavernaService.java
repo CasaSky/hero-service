@@ -24,7 +24,7 @@ public class TavernaService {
     @Value("${uri.taverna.groups.members}")
     private String tavernaMembersUri;
 
-    @Value("${user.uri}")
+    @Value("${uri.user}")
     private String userUri;
 
     @Value("${user.username}")

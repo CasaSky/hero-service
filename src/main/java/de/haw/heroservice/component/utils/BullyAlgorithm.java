@@ -25,27 +25,29 @@ public class BullyAlgorithm {
     @Autowired
     private BlackboardService blackboardService;
 
-    public String electHero(HeroDto heroDto, Election election) {
+    // If no one answers, then solve task -> return false
+    public boolean electHero(HeroDto heroDto, Election election) {
         String groupUrl = heroDto.getGroup();
         List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames());// higher usernames
         List<String> heroUrls = tavernaService.getHeroUrls();
-        if (!areSomeoneAvailable(heroUrls)) { // CheckAvailability
+        if (!postElection(heroUrls, election)) { // Post election to all members and check availability.
+
             // i am the new coordinator till the end of the quest/task
             // solve quests? and then after send answer to the origin owners callback. // temporar
             //if not do nothing?
         }
 
-        return null;
+        return false;
     }
 
     private List<String> getHigherUsernames(List<String> memberUsernames) {
        return memberUsernames.stream().filter(u -> u.compareTo(username) == 1).collect(Collectors.toList());
     }
 
-    private boolean areSomeoneAvailable(List<String> heroUrls) {
+    private boolean postElection(List<String> heroUrls, Election election) {
         for (String heroUrl : heroUrls) {
             try {
-                ResponseEntity<?> response = blackboardService.getHero(heroUrl);
+                ResponseEntity<?> response = blackboardService.postElection(heroUrl, election);
                 if (response.getStatusCode().is2xxSuccessful()) {
                     return true;
                 }
