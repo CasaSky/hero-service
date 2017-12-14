@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +56,11 @@ public class TavernaService {
     }
 
     public TavernaService() {
+
+    }
+
+    @PostConstruct
+    public void init() {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         restTemplate.getInterceptors().add(

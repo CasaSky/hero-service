@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -46,6 +48,9 @@ public class BlackboardService {
     @Value("${uri.election}")
     private String electionUri;
 
+    @Value("${uri.quest}")
+    private String questUri;
+
     private String loginToken;
 
     private HttpHeaders headers = new HttpHeaders();
@@ -69,13 +74,22 @@ public class BlackboardService {
         headers.set("Authorization", "Token "+loginToken);
     }
 
-    public ResponseEntity<?> sendResultsToCallback(Assignment assignment) {
-        String callbackAddress = assignment.getCallback();
-        String data = assignment.getData();
+    public ResponseEntity<?> sendResultsToCallback(String callbackAddress, Callback callback) {
 
-        HttpEntity<String> entity = new HttpEntity<>(data, headers);
+        if (!StringUtils.isEmpty(callbackAddress)) {
 
-        return restTemplate.exchange(callbackAddress, HttpMethod.POST, entity, Object.class);
+            HttpEntity<Callback> entity = new HttpEntity<>(callback, headers);
+
+            ResponseEntity<?> response;
+            try {
+                response = restTemplate.exchange("http://"+callbackAddress, HttpMethod.POST, entity, Object.class);
+
+            } catch (HttpStatusCodeException e) {
+                return new ResponseEntity<>(e.getCause(), e.getStatusCode());
+            }
+            return response;
+        }
+        return new ResponseEntity<>("Callback address must be not empty!", HttpStatus.BAD_REQUEST);
     }
 
     public ResponseEntity<?> solveTask(Assignment assignment) {
@@ -120,23 +134,18 @@ public class BlackboardService {
         callbackRequest.setTask(assignment.getTask());
         callbackRequest.setResource(assignment.getResource());
         callbackRequest.setMethod(assignment.getMethod());
-        JSONArray jArray = new JSONArray();
+        //JSONArray jArray = new JSONArray();//
+        String tokens = "";
         for (String stepToken : stepsTokens) {
-            jArray.put(stepToken);
+            tokens+=stepToken+",";
         }
-        callbackRequest.setData(jArray.toString());
+        tokens = tokens.substring(0,tokens.length()-2);
+        callbackRequest.setData(tokens);
+        assignment.setData(tokens);
         callbackRequest.setUser(userUri);
         callbackRequest.setMessage(assignment.getMessage());
 
-        //return postOnCallBack(assignment.getCallback(), callbackRequest); TODO war falsch
-        return sendResultsToCallback(assignment);
-    }
-
-    private ResponseEntity<?> postOnCallBack(String callbackUrl, Callback callbackRequest) {
-
-        HttpEntity<Callback> entity = new HttpEntity<>(callbackRequest, headers);
-
-        return restTemplate.exchange(callbackUrl, HttpMethod.POST, entity, Object.class);
+        return sendResultsToCallback(assignment.getCallback(), callbackRequest);
     }
 
     private String postTokensInNext(List<String> stepsTokens, String nextUrl) {
@@ -185,7 +194,11 @@ public class BlackboardService {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
        ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, ObjectNode.class);
-       return response.getBody().get("next").asText();
+       try {
+           return response.getBody().get("next").asText();
+       } catch (Exception e) {
+           return null;
+       }
     }
 
     private String getHost(String locationUri) {
@@ -216,5 +229,67 @@ public class BlackboardService {
 
         HttpEntity<Election> entity = new HttpEntity<>(election,headers);
         return restTemplate.exchange(blackboardUrl+heroUrl+electionUri, HttpMethod.POST, entity, ObjectNode.class);
+    }
+
+    public ResponseEntity<?> solveQuest(List<Callback> callbacks) {
+        if (!callbacks.isEmpty()) {
+            String resource = callbacks.get(0).getResource();
+            String task = callbacks.get(0).getTask();
+            String tokens = "";
+            for (Callback c : callbacks) {
+                tokens+=c.getData()+",";
+            }
+            tokens = tokens.substring(0,tokens.length()-2);
+
+            String postResource = "{\"tokens\":[" + tokens + "}}";
+
+            HttpEntity<String> entity = new HttpEntity<>(postResource, headers);
+
+            ResponseEntity<ObjectNode> response;
+
+            String token;
+            try {
+                String location = getLocation(task);
+
+
+                String host = "http://" + getHost(location);
+                response = restTemplate.exchange(host + resource, HttpMethod.POST, entity, ObjectNode.class);
+                token = response.getBody().get("token").asText();
+            } catch (HttpStatusCodeException e) {
+                return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            }
+
+
+            if (!StringUtils.isEmpty(token)) {
+
+                String json = "{\"tokens\":{\"" + task + "\":" + token + "}}";
+                entity = new HttpEntity<>(json, headers);
+
+                String quest = questUri + getQuest(task);
+
+                try {
+                    response = restTemplate.exchange(blackboardUrl + "/blackboard/" + quest, HttpMethod.POST, entity, ObjectNode.class);
+                } catch (HttpStatusCodeException e) {
+                    return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+                }
+                return response;
+            }
+        }
+        return new ResponseEntity<>("Can't deliver token.", HttpStatus.BAD_REQUEST);
+    }
+
+    private String getQuest(String taskUri) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + taskUri, HttpMethod.GET, entity, ObjectNode.class);
+        return response.getBody().get("quest").asText();
+    }
+
+    public String getRequiredPlayers(String taskUri) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + taskUri, HttpMethod.GET, entity, ObjectNode.class);
+        JsonNode object =  response.getBody().get("object");
+        return object.get("required_players").asText();
     }
 }
