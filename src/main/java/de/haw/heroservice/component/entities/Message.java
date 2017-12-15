@@ -1,25 +1,15 @@
 package de.haw.heroservice.component.entities;
 
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-
-@Entity
 public class Message {
 
-    @Id
-    @GeneratedValue
-    private Integer id;
+    private String cause;
 
-    public Integer getId() {
-        return id;
+    public Message(String cause) {
+        this.cause = cause;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public String getCause() {
+        return cause;
     }
-
-    public Message() {}
-
 }

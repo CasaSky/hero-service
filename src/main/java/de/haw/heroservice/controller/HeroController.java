@@ -1,11 +1,8 @@
 package de.haw.heroservice.controller;
 
 import de.haw.heroservice.BlackboardService;
-import de.haw.heroservice.component.entities.Assignment;
-import de.haw.heroservice.component.entities.Callback;
+import de.haw.heroservice.component.entities.*;
 import de.haw.heroservice.component.dtos.HeroDto;
-import de.haw.heroservice.component.entities.Election;
-import de.haw.heroservice.component.entities.Hiring;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.utils.BullyAlgorithm;
 import org.apache.log4j.Logger;
@@ -58,14 +55,16 @@ public class HeroController {
     }
 
     @RequestMapping(value = "/hero/hirings", method = RequestMethod.POST)
-    public ResponseEntity<?> addHiring(@RequestBody Hiring hiring) {
+    public ResponseEntity<Message> addHiring(@RequestBody Hiring hiring) {
         logger.info("Hiring request received!");
 
         this.hiring = hiring;
 
         ResponseEntity<?> response;
+        HttpStatus status;
         try {
             response = tavernaService.joinGroup(hiring.getGroup());
+            status = response.getStatusCode();
 
             // Refresh new group
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -73,39 +72,47 @@ public class HeroController {
             }
         } catch (HttpStatusCodeException e){
             logger.error("Error on Hiring request!", e);
-            return new ResponseEntity<>(e.getMessage(), e.getStatusCode());
+            return new ResponseEntity<>(new Message("Can't do hiring!"), e.getStatusCode());
         }
-        return response;
+        return new ResponseEntity<>(new Message("Hiring accepted!"), status);
     }
 
     @RequestMapping(value="/hero/assignments", method = RequestMethod.POST)
-    public ResponseEntity<?> addAssignment(@RequestBody Assignment assignment) {
+    public ResponseEntity<Message> addAssignment(@RequestBody Assignment assignment) {
         logger.info("Assignment request received!");
             this.assignment = assignment;
             heroDto.setIdle(true);
             ResponseEntity<?> response;
+            HttpStatus status;
             try {
                 response = blackboardService.solveTask(assignment);
                 heroDto.setIdle(!response.getStatusCode().is2xxSuccessful());
+                status = response.getStatusCode();
             } catch (HttpStatusCodeException e) {
                 logger.error("Error on Assignment request!", e);
-                return new ResponseEntity<>(e.getMessage(), e.getStatusCode());
+                return new ResponseEntity<>(new Message("Can't do assignment!"), e.getStatusCode());
             }
-           return response;
+            Message message;
+            if (status.is2xxSuccessful()) {
+                message = new Message("Assignment done!");
+            } else {
+                message = new Message("Assignment failed!");
+            }
+           return new ResponseEntity<>(message, status);
     }
 
     @RequestMapping(value="/hero/callback", method = RequestMethod.POST)
-    public ResponseEntity<?> callback(@RequestBody Callback callback) { //TODO need only string for data?
+    public ResponseEntity<Message> callback(@RequestBody Callback callback) { //TODO need only string for data?
         //TODO post tokens in resource, and post result token in quest deliveries.
         callbacks.add(callback);
         logger.info("Post on callback received!");
         requiredPlayers++;
 
-        if (requiredPlayers.equals(Integer.parseInt(blackboardService.getRequiredPlayers(callback.getTask())))) {
+       // if (requiredPlayers.equals(Integer.parseInt(blackboardService.getRequiredPlayers(callback.getTask())))) {
             return blackboardService.solveQuest(callbacks);
-        }
-        logger.info("Callback ok!");
-        return new ResponseEntity<>(HttpStatus.OK);
+       // }
+        //logger.info("Callback ok!");
+        //return new ResponseEntity<>(new Message("Callback api reached!"), HttpStatus.OK);
 
     }
 

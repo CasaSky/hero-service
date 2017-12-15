@@ -9,6 +9,9 @@ import com.google.gson.JsonParser;
 import de.haw.heroservice.component.entities.Assignment;
 import de.haw.heroservice.component.entities.Callback;
 import de.haw.heroservice.component.entities.Election;
+import de.haw.heroservice.component.entities.Message;
+import de.haw.heroservice.controller.HeroController;
+import org.apache.log4j.Logger;
 import org.aspectj.lang.annotation.Before;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -29,6 +32,9 @@ public class BlackboardService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    private Logger logger = Logger.getLogger(BlackboardService.class);
+
 
     @Value("${user.username}")
     private String username;
@@ -137,9 +143,9 @@ public class BlackboardService {
         //JSONArray jArray = new JSONArray();//
         String tokens = "";
         for (String stepToken : stepsTokens) {
-            tokens+=stepToken+",";
+            tokens+=stepToken+"\",\"";
         }
-        tokens = tokens.substring(0,tokens.length()-2);
+        tokens = tokens.substring(0,tokens.length()-3);
         callbackRequest.setData(tokens);
         assignment.setData(tokens);
         callbackRequest.setUser(userUri);
@@ -225,23 +231,24 @@ public class BlackboardService {
         return objectNode.get("name").asText();
     }
 
-    public ResponseEntity<?> postElection(String heroUrl, Election election) {
+    public ResponseEntity<Message> postElection(String heroUrl, Election election) {
 
         HttpEntity<Election> entity = new HttpEntity<>(election,headers);
-        return restTemplate.exchange(blackboardUrl+heroUrl+electionUri, HttpMethod.POST, entity, ObjectNode.class);
+        HttpStatus status =  restTemplate.exchange(blackboardUrl+heroUrl+electionUri, HttpMethod.POST, entity, ObjectNode.class).getStatusCode();
+        return new ResponseEntity<>(new Message("election posted!"), status);
     }
 
-    public ResponseEntity<?> solveQuest(List<Callback> callbacks) {
+    public ResponseEntity<Message> solveQuest(List<Callback> callbacks) {
         if (!callbacks.isEmpty()) {
             String resource = callbacks.get(0).getResource();
             String task = callbacks.get(0).getTask();
             String tokens = "";
             for (Callback c : callbacks) {
-                tokens+=c.getData()+",";
+                tokens+=c.getData()+"\",\"";
             }
-            tokens = tokens.substring(0,tokens.length()-2);
+            tokens = tokens.substring(0,tokens.length()-1);
 
-            String postResource = "{\"tokens\":[" + tokens + "}}";
+            String postResource = "{\"tokens\":[" + tokens + "]}";
 
             HttpEntity<String> entity = new HttpEntity<>(postResource, headers);
 
@@ -256,9 +263,9 @@ public class BlackboardService {
                 response = restTemplate.exchange(host + resource, HttpMethod.POST, entity, ObjectNode.class);
                 token = response.getBody().get("token").asText();
             } catch (HttpStatusCodeException e) {
-                return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+                logger.error("could not deliver resource token!");
+                return new ResponseEntity<>(new Message("could not deliver resource token!"), HttpStatus.NOT_FOUND);
             }
-
 
             if (!StringUtils.isEmpty(token)) {
 
@@ -267,15 +274,19 @@ public class BlackboardService {
 
                 String quest = questUri + getQuest(task);
 
+                HttpStatus status;
                 try {
                     response = restTemplate.exchange(blackboardUrl + "/blackboard/" + quest, HttpMethod.POST, entity, ObjectNode.class);
+                    status = response.getStatusCode();
                 } catch (HttpStatusCodeException e) {
-                    return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+                    logger.error("could not deliver quest token!");
+                    return new ResponseEntity<>(new Message("could not deliver quest token"), HttpStatus.BAD_REQUEST);
                 }
-                return response;
+                return new ResponseEntity<>(new Message("quest token delivered!"), status);
             }
         }
-        return new ResponseEntity<>("Can't deliver token.", HttpStatus.BAD_REQUEST);
+        logger.error("Missing callback address!");
+        return new ResponseEntity<>(new Message("Missing callback address!"), HttpStatus.BAD_REQUEST);
     }
 
     private String getQuest(String taskUri) {
