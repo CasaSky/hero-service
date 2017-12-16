@@ -1,5 +1,7 @@
 package de.haw.heroservice.component.entities;
 
+import java.util.List;
+
 public class Assignment {
 
     private String id;
@@ -10,7 +12,7 @@ public class Assignment {
 
     private String method;
 
-    private String data;
+    private List<Object>  data;
 
     private String callback;
 
@@ -50,11 +52,11 @@ public class Assignment {
         this.method = method;
     }
 
-    public String getData() {
+    public List<Object> getData() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setData(List<Object> data) {
         this.data = data;
     }
 

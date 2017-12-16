@@ -1,30 +1,27 @@
 package de.haw.heroservice;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import de.haw.heroservice.component.entities.Assignment;
 import de.haw.heroservice.component.entities.Callback;
 import de.haw.heroservice.component.entities.Election;
 import de.haw.heroservice.component.entities.Message;
-import de.haw.heroservice.controller.HeroController;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.aspectj.lang.annotation.Before;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Component
@@ -60,6 +57,8 @@ public class BlackboardService {
     private String loginToken;
 
     private HttpHeaders headers = new HttpHeaders();
+
+    ObjectMapper mapper = new ObjectMapper();
 
     public BlackboardService() {
 
@@ -106,7 +105,7 @@ public class BlackboardService {
         String task = assignment.getTask();
         String resource = assignment.getResource();
         String method = assignment.getMethod();
-        String data = assignment.getData();
+        List<Object> data = Arrays.asList(assignment.getData());
 
 
         //TODO als data?
@@ -126,13 +125,17 @@ public class BlackboardService {
         }
 
         List<String> stepsTokens = new ArrayList<>();
-        for (String step : steps) {
-            stepsTokens.add(getStepToken(host+step));
+        try {
+            for (String step : steps) {
+                stepsTokens.add(mapper.writeValueAsString(getStepToken(host+step)));
+            }
+        } catch (JsonProcessingException e) {
+            return null;
         }
 
+
+
        // String deliveryToken = postTokensInNext(stepsTokens, host+next);
-
-
 
 
         Callback callbackRequest = new Callback();
@@ -140,31 +143,31 @@ public class BlackboardService {
         callbackRequest.setTask(assignment.getTask());
         callbackRequest.setResource(assignment.getResource());
         callbackRequest.setMethod(assignment.getMethod());
-        //JSONArray jArray = new JSONArray();//
-        String tokens = "";
+        JSONArray jArray = new JSONArray();//
         for (String stepToken : stepsTokens) {
-            tokens+=stepToken+"\",\"";
+            jArray.put(stepToken);
         }
-        tokens = tokens.substring(0,tokens.length()-3);
-        callbackRequest.setData(tokens);
-        assignment.setData(tokens);
+        callbackRequest.setData(jArray.toList());
+        assignment.setData(jArray.toList());
         callbackRequest.setUser(userUri);
         callbackRequest.setMessage(assignment.getMessage());
 
         return sendResultsToCallback(assignment.getCallback(), callbackRequest);
     }
 
-    private String postTokensInNext(List<String> stepsTokens, String nextUrl) {
-
-        JSONArray jArray = new JSONArray();
-
-        for (String stepToken : stepsTokens) {
-            jArray.put(stepToken);
+    private String postTokens(String stepsTokens, String url) {
+        String tokens = "tokens";
+        String tokensValues;
+        try {
+            tokens = mapper.writeValueAsString(tokens);
+            tokensValues = mapper.writeValueAsString(stepsTokens);
+        } catch (JsonProcessingException e) {
+           return null;
         }
+        //HttpEntity<String> entity = new HttpEntity<>("{\"tokens\" : \"" +stepsTokens+"}",headers);
+        HttpEntity<String> entity = new HttpEntity<>("{" + tokens + ":" + tokensValues + "}",headers);
 
-        HttpEntity<String> entity = new HttpEntity<>("{\"tokens\":"+jArray+"}",headers);
-
-        ResponseEntity<ObjectNode> response = restTemplate.exchange(nextUrl, HttpMethod.POST, entity, ObjectNode.class);
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, ObjectNode.class);
 
         return response.getBody().get("token").asText();
     }
@@ -242,7 +245,8 @@ public class BlackboardService {
         if (!callbacks.isEmpty()) {
             String resource = callbacks.get(0).getResource();
             String task = callbacks.get(0).getTask();
-            String tokens = "";
+            String quest = questUri + getQuest(task);
+            /*String tokens = "";
             for (Callback c : callbacks) {
                 tokens+=c.getData()+"\",\"";
             }
@@ -260,19 +264,32 @@ public class BlackboardService {
 
 
                 String host = "http://" + getHost(location);
-                response = restTemplate.exchange(host + resource, HttpMethod.POST, entity, ObjectNode.class);
-                token = response.getBody().get("token").asText();
+                response = restTemplate.exchange(host + resource, HttpMethod.POST, entity, ObjectNode.class);*/
+
+            String questToken;
+            ResponseEntity<ObjectNode> response = null;
+            String tokens = "";
+            for (Callback callback : callbacks) {
+                tokens+=StringUtils.join(callback.getData(), ",");
+            }
+            try {
+                String location = getLocation(task);
+                String host = "http://" + getHost(location);
+
+                questToken = postTokens(tokens, host+resource);
             } catch (HttpStatusCodeException e) {
                 logger.error("could not deliver resource token!");
                 return new ResponseEntity<>(new Message("could not deliver resource token!"), HttpStatus.NOT_FOUND);
             }
 
-            if (!StringUtils.isEmpty(token)) {
+            if (!StringUtils.isEmpty(questToken)) {
 
-                String json = "{\"tokens\":{\"" + task + "\":" + token + "}}";
-                entity = new HttpEntity<>(json, headers);
-
-                String quest = questUri + getQuest(task);
+                ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
+                ObjectNode tokensNode = rootNode.putObject("tokens");
+                tokensNode
+                        .put(task, questToken);
+                HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
+                //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
 
                 HttpStatus status;
                 try {
@@ -293,7 +310,7 @@ public class BlackboardService {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
         ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + taskUri, HttpMethod.GET, entity, ObjectNode.class);
-        return response.getBody().get("quest").asText();
+        return response.getBody().get("object").get("quest").asText();
     }
 
     public String getRequiredPlayers(String taskUri) {

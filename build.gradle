@@ -36,6 +36,7 @@ dependencies {
 	compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
 	compile group: 'org.json', name: 'json', version: '20171018'
 	compile group: 'log4j', name: 'log4j', version: '1.2.17'
+	compile 'org.apache.commons:commons-lang3:3.7'
 	runtime('com.h2database:h2')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
 	testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')
