@@ -19,6 +19,7 @@ version = ''
 sourceCompatibility = 1.8
 
 jar {
+	//baseName = 'vsp_aaz526'
 	baseName = 'vsp_abq944'
 	version =  ''
 }

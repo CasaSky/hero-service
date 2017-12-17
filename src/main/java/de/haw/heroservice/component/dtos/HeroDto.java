@@ -18,6 +18,13 @@ public class HeroDto {
     private String assignments;
     @Value("${uri.messages}")
     private String messages;
+    @Value("${uri.election}")
+    private String election;
+    @Value("${uri.mutex}")
+    private String mutex;
+    @Value("${uri.mutexstate}")
+    private String mutextstate;
+
 
     public HeroDto() {}
 

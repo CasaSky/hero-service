@@ -5,6 +5,7 @@ import de.haw.heroservice.component.entities.*;
 import de.haw.heroservice.component.dtos.HeroDto;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.utils.BullyAlgorithm;
+import de.haw.heroservice.component.utils.MutexAlgorithm;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -45,7 +46,14 @@ public class HeroController {
 
     private List<Callback> callbacks = new ArrayList<>();
 
+    private Mutexstate mutexstate = new Mutexstate();
+    private Mutex mutex;
+
+    @Autowired
+    private MutexAlgorithm mutexAlgorithm;
+
     private Logger logger = Logger.getLogger(HeroController.class);
+
 
     @RequestMapping(value = "/hero", method = RequestMethod.GET)
     public ResponseEntity<HeroDto> info() {
@@ -108,11 +116,11 @@ public class HeroController {
         logger.info("Post on callback received!");
         requiredPlayers++;
 
-       // if (requiredPlayers.equals(Integer.parseInt(blackboardService.getRequiredPlayers(callback.getTask())))) {
+       if (requiredPlayers.equals(Integer.parseInt(blackboardService.getRequiredPlayers(callback.getTask())))) {
             return blackboardService.solveQuest(callbacks);
-       // }
-        //logger.info("Callback ok!");
-        //return new ResponseEntity<>(new Message("Callback api reached!"), HttpStatus.OK);
+       }
+       logger.info("Callback ok!");
+       return new ResponseEntity<>(new Message("Callback api reached!"), HttpStatus.OK);
 
     }
 
@@ -133,5 +141,17 @@ public class HeroController {
             return new ResponseEntity<>(e.getMessage(), e.getStatusCode());
         }
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @RequestMapping(value="/hero/mutex", method = RequestMethod.POST)
+    public ResponseEntity<Message> mutex(@RequestBody Mutex mutex) {
+        this.mutex = mutex;
+        mutexstate.setTime(mutexAlgorithm.getTime(mutexstate.getTime(), mutex.getTime()));
+        return new ResponseEntity<>(new Message("Mutex done!"),HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/hero/mutexstate", method = RequestMethod.GET)
+    public Mutexstate mutexstate() {
+        return mutexstate;
     }
 }

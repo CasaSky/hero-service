@@ -23,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class BlackboardService {
@@ -53,6 +54,9 @@ public class BlackboardService {
 
     @Value("${uri.quest}")
     private String questUri;
+
+    @Value("${uri.deliveries}")
+    private String deliveriesUri;
 
     private String loginToken;
 
@@ -125,6 +129,7 @@ public class BlackboardService {
         }
 
         List<String> stepsTokens = new ArrayList<>();
+
         try {
             for (String step : steps) {
                 stepsTokens.add(mapper.writeValueAsString(getStepToken(host+step)));
@@ -132,6 +137,7 @@ public class BlackboardService {
         } catch (JsonProcessingException e) {
             return null;
         }
+
 
 
 
@@ -160,13 +166,14 @@ public class BlackboardService {
         String tokensValues;
         try {
             tokens = mapper.writeValueAsString(tokens);
-            tokensValues = mapper.writeValueAsString(stepsTokens);
+            tokensValues = stepsTokens;
         } catch (JsonProcessingException e) {
            return null;
         }
         //HttpEntity<String> entity = new HttpEntity<>("{\"tokens\" : \"" +stepsTokens+"}",headers);
-        HttpEntity<String> entity = new HttpEntity<>("{" + tokens + ":" + tokensValues + "}",headers);
+        HttpEntity<String> entity = new HttpEntity<>("{" + tokens + ":[" + tokensValues + "]}",headers);
 
+        logger.info(entity.getBody());
         ResponseEntity<ObjectNode> response = restTemplate.exchange(url, HttpMethod.POST, entity, ObjectNode.class);
 
         return response.getBody().get("token").asText();
@@ -245,7 +252,9 @@ public class BlackboardService {
         if (!callbacks.isEmpty()) {
             String resource = callbacks.get(0).getResource();
             String task = callbacks.get(0).getTask();
-            String quest = questUri + getQuest(task);
+            task = task.substring(1, task.length());
+            logger.info(task);
+            String quest = questUri + "/" + getQuestNumber(task);
             /*String tokens = "";
             for (Callback c : callbacks) {
                 tokens+=c.getData()+"\",\"";
@@ -269,9 +278,16 @@ public class BlackboardService {
             String questToken;
             ResponseEntity<ObjectNode> response = null;
             String tokens = "";
-            for (Callback callback : callbacks) {
-                tokens+=StringUtils.join(callback.getData(), ",");
+            String komma = ",";
+            List<String> newList = new ArrayList<>();
+
+            for (Callback callback : callbacks) { // make a new list of all tokens
+                for (Object obj : callback.getData()) {
+                    newList.add(obj.toString());
+                }
             }
+            // komma separated tokens
+            tokens+=StringUtils.join(newList, komma);
             try {
                 String location = getLocation(task);
                 String host = "http://" + getHost(location);
@@ -279,6 +295,7 @@ public class BlackboardService {
                 questToken = postTokens(tokens, host+resource);
             } catch (HttpStatusCodeException e) {
                 logger.error("could not deliver resource token!");
+                logger.error(e.getMessage());
                 return new ResponseEntity<>(new Message("could not deliver resource token!"), HttpStatus.NOT_FOUND);
             }
 
@@ -289,24 +306,31 @@ public class BlackboardService {
                 tokensNode
                         .put(task, questToken);
                 HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
+                //createAuthRestTemplate();
+                logger.info(restTemplate);
                 //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
 
+                logger.info(entity.getBody());
                 HttpStatus status;
+                String deliverieUrl = blackboardUrl + quest + deliveriesUri;
+                logger.info(deliverieUrl);
                 try {
-                    response = restTemplate.exchange(blackboardUrl + "/blackboard/" + quest, HttpMethod.POST, entity, ObjectNode.class);
+                    response = restTemplate.exchange(deliverieUrl, HttpMethod.POST, entity, ObjectNode.class);
                     status = response.getStatusCode();
+                    return new ResponseEntity<>(new Message("Maybe delivered?"), status);
                 } catch (HttpStatusCodeException e) {
                     logger.error("could not deliver quest token!");
-                    return new ResponseEntity<>(new Message("could not deliver quest token"), HttpStatus.BAD_REQUEST);
+                    logger.error(e.getMessage());
+                    return new ResponseEntity<>(new Message("could not deliver quest token"), e.getStatusCode());
                 }
-                return new ResponseEntity<>(new Message("quest token delivered!"), status);
+                //return new ResponseEntity<>(new Message("quest token delivered!"), status);
             }
         }
         logger.error("Missing callback address!");
         return new ResponseEntity<>(new Message("Missing callback address!"), HttpStatus.BAD_REQUEST);
     }
 
-    private String getQuest(String taskUri) {
+    private String getQuestNumber(String taskUri) {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
         ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + taskUri, HttpMethod.GET, entity, ObjectNode.class);
