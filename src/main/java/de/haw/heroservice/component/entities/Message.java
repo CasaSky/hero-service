@@ -3,13 +3,20 @@ package de.haw.heroservice.component.entities;
 
 public class Message {
 
-    private String cause;
+    private String message;
+    private int statusValue;
 
-    public Message(String cause) {
-        this.cause = cause;
+    public Message(String message, int statusValue) {
+        this.message = message;
+        this.statusValue = statusValue;
     }
 
-    public String getCause() {
-        return cause;
+
+    public String getMessage() {
+        return message;
+    }
+
+    public int getStatusValue() {
+        return statusValue;
     }
 }

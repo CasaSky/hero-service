@@ -80,9 +80,10 @@ public class HeroController {
             }
         } catch (HttpStatusCodeException e){
             logger.error("Error on Hiring request!", e);
-            return new ResponseEntity<>(new Message("Can't do hiring!"), e.getStatusCode());
+            status = e.getStatusCode();
+            return new ResponseEntity<>(new Message("Can't do hiring!", status.value()), e.getStatusCode());
         }
-        return new ResponseEntity<>(new Message("Hiring accepted! New group is: " + heroDto.getGroup()), status);
+        return new ResponseEntity<>(new Message("Hiring accepted! New group is: " + heroDto.getGroup(), status.value()), status);
     }
 
     @RequestMapping(value="/hero/assignments", method = RequestMethod.POST)
@@ -98,13 +99,13 @@ public class HeroController {
                 status = response.getStatusCode();
             } catch (HttpStatusCodeException e) {
                 logger.error("Error on Assignment request!", e);
-                return new ResponseEntity<>(new Message("Can't do assignment!"), e.getStatusCode());
+                return new ResponseEntity<>(new Message("Can't do assignment!", e.getStatusCode().value()), e.getStatusCode());
             }
             Message message;
             if (status.is2xxSuccessful()) {
-                message = new Message("Assignment done!");
+                message = new Message("Assignment done!", status.value());
             } else {
-                message = new Message("Assignment failed!");
+                message = new Message("Assignment failed!", status.value());
             }
            return new ResponseEntity<>(message, status);
     }
@@ -120,7 +121,7 @@ public class HeroController {
             return blackboardService.solveQuest(callbacks);
        }
        logger.info("Callback ok!");
-       return new ResponseEntity<>(new Message("Callback api reached!"), HttpStatus.OK);
+       return new ResponseEntity<>(new Message("Callback api reached!", 200), HttpStatus.OK);
 
     }
 
@@ -147,7 +148,7 @@ public class HeroController {
     public ResponseEntity<Message> mutex(@RequestBody Mutex mutex) {
         this.mutex = mutex;
         mutexstate.setTime(mutexAlgorithm.getTime(mutexstate.getTime(), mutex.getTime()));
-        return new ResponseEntity<>(new Message("Mutex done!"),HttpStatus.OK);
+        return new ResponseEntity<>(new Message("Mutex done!", 200),HttpStatus.OK);
     }
 
     @RequestMapping(value = "/hero/mutexstate", method = RequestMethod.GET)
