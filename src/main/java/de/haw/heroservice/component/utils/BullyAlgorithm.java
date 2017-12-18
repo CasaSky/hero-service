@@ -4,6 +4,7 @@ import de.haw.heroservice.BlackboardService;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.dtos.HeroDto;
 import de.haw.heroservice.component.entities.Election;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -25,11 +26,16 @@ public class BullyAlgorithm {
     @Autowired
     private BlackboardService blackboardService;
 
+    private Logger logger = Logger.getLogger(BullyAlgorithm.class);
+
     // If no one answers, then solve task -> return false
     public boolean electHero(HeroDto heroDto, Election election) {
         String groupUrl = heroDto.getGroup();
+logger.info(groupUrl);
         List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames());// higher usernames
+logger.info(membersUsernames);
         List<String> heroUrls = tavernaService.getHeroUrls();
+logger.info(heroUrls);
         if (!postElection(heroUrls, election)) { // Post election to all members and check availability.
 
             // i am the new coordinator till the end of the quest/task
@@ -48,6 +54,7 @@ public class BullyAlgorithm {
         for (String heroUrl : heroUrls) {
             try {
                 ResponseEntity<?> response = blackboardService.postElection(heroUrl, election);
+logger.info(response);
                 if (response.getStatusCode().is2xxSuccessful()) {
                     return true;
                 }

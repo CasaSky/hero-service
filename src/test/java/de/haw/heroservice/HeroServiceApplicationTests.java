@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 @SpringBootTest
 public class HeroServiceApplicationTests {
 
-	@Test
-	public void contextLoads() {
-	}
+    @Test
+    public void contextLoads() {
+    }
 }
