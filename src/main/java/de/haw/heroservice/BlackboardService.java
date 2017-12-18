@@ -118,15 +118,22 @@ public class BlackboardService {
 
         createAuthRestTemplate();
 
-        // check if next is required.
-        String next = getNext(host+resource);
+        // check if there is a next.
+        String next = resource;
+        String tempNext = null;
+        do {
+            if (!isCriticalSection(host + next)) {
+                tempNext = getNext(host + next);
+                if (tempNext != null) {
+                    next = tempNext;
+                }
+            }
+            //TODO ....
+        } while (tempNext!=null);
 
-        List<String> steps;
-        if (next!=null) {
+        //TODO.. be aware of critical section, what to do then????
+        List<String> steps = new ArrayList<>();
             steps = getSteps(host + next);
-        } else {
-            steps = getSteps(host+resource);
-        }
 
         List<String> stepsTokens = new ArrayList<>();
 
@@ -159,6 +166,18 @@ public class BlackboardService {
         callbackRequest.setMessage(assignment.getMessage());
 
         return sendResultsToCallback(assignment.getCallback(), callbackRequest);
+    }
+
+    private boolean isCriticalSection(String resourceUrl) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+        boolean criticalSection;
+        try {
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.POST, entity, ObjectNode.class);
+            criticalSection = response.getBody().get("critical_section").asBoolean(false);
+        } catch (Exception e) {
+            return false;
+        }
+        return criticalSection;
     }
 
     private String postTokens(String stepsTokens, String url) {
@@ -209,12 +228,14 @@ public class BlackboardService {
 
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
-       ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, ObjectNode.class);
-       try {
-           return response.getBody().get("next").asText();
+        String next;
+        try {
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, ObjectNode.class);
+            next = response.getBody().get("next").asText();
        } catch (Exception e) {
            return null;
        }
+       return next;
     }
 
     private String getHost(String locationUri) {
