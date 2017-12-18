@@ -12,7 +12,7 @@ public class Assignment {
 
     private String method;
 
-    private List<Object>  data;
+    private List<Object> data;
 
     private String callback;
 

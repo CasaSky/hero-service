@@ -1,5 +1,7 @@
 package de.haw.heroservice.component;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.haw.heroservice.BlackboardService;
 import org.apache.log4j.Logger;
@@ -38,6 +40,8 @@ public class TavernaService {
     @Value("${url.tavernaAdventurers}")
     private String tavernaAdventurersUrl;
 
+    @Value("{url.taverna.groups}")
+    private String tavernGroupsUrl;
     @Autowired
     private BlackboardService blackboardService;
 
@@ -101,17 +105,18 @@ public class TavernaService {
     }
 
     // Returns a list of usernames of members in my group.
-    public List<String> getMembersUsernames() {
+    public List<String> getMembersUsernames(String groupUrl) {
 
-        ResponseEntity<ArrayList> response = restTemplate.exchange(tavernaAdventurersUrl, HttpMethod.GET, entity, ArrayList.class);
-        for (Object o : response.getBody()) {
-            JSONObject member = (JSONObject) o;
-            String userUri = member.getString("user");
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(groupUrl+tavernaMembersUri, HttpMethod.GET, entity, ObjectNode.class);
+        JsonNode objects = response.getBody().get("objects");
+        for (JsonNode o : objects) {
+            //JSONObject member = (JSONObject) o;
+            String userUri = o.get("user").asText();
 
             membersUsernames.add(blackboardService.getUsername(userUri));
         }
 
-        membersUsernames.remove(userUri); // without own username.
+        membersUsernames.remove(username); // without own username.
 
         return membersUsernames;
     }
@@ -121,8 +126,8 @@ public class TavernaService {
 
         for (String name : membersUsernames) {
             ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl + "/" + name, HttpMethod.GET, entity, ObjectNode.class);
-
-           heroUrls.add(response.getBody().get("url").asText());
+            JsonNode object = response.getBody().get("object");
+           heroUrls.add(object.get("url").asText());
         }
 
         return heroUrls;

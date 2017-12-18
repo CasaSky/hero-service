@@ -4,6 +4,7 @@ import de.haw.heroservice.BlackboardService;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.dtos.HeroDto;
 import de.haw.heroservice.component.entities.Election;
+import de.haw.heroservice.component.entities.Message;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +33,7 @@ public class BullyAlgorithm {
     public boolean electHero(HeroDto heroDto, Election election) {
         String groupUrl = heroDto.getGroup();
 logger.info(groupUrl);
-        List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames());// higher usernames
+        List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames(groupUrl));// higher usernames
 logger.info(membersUsernames);
         List<String> heroUrls = tavernaService.getHeroUrls();
 logger.info(heroUrls);
@@ -52,7 +53,7 @@ logger.info(response);
                     return true;
                 }
             } catch (ResourceAccessException ex) {
-                return false;
+
             }
         }
         return false;

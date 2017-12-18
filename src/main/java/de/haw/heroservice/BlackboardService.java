@@ -238,13 +238,21 @@ public class BlackboardService {
     public String getUsername(String userUri) {
 
         ObjectNode objectNode = restTemplate.getForObject(blackboardUrl+userUri, ObjectNode.class);
-        return objectNode.get("name").asText();
+        JsonNode object = objectNode.get("object");
+        return object.get("name").asText();
     }
 
-    public ResponseEntity<Message> postElection(String heroUrl, Election election) {
+    public ResponseEntity<?> postElection(String heroUrl, Election election) {
 
         HttpEntity<Election> entity = new HttpEntity<>(election,headers);
-        HttpStatus status =  restTemplate.exchange(blackboardUrl+heroUrl+electionUri, HttpMethod.POST, entity, ObjectNode.class).getStatusCode();
+        HttpStatus status;
+        ResponseEntity<?> response;
+        try {
+            response = restTemplate.exchange("http://"+heroUrl + electionUri, HttpMethod.POST, entity, ObjectNode.class);
+            status = response.getStatusCode();
+        } catch (HttpStatusCodeException e) {
+            status = e.getStatusCode();
+        }
         return new ResponseEntity<>(new Message("election posted!"), status);
     }
 
