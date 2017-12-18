@@ -82,7 +82,7 @@ public class HeroController {
             logger.error("Error on Hiring request!", e);
             return new ResponseEntity<>(new Message("Can't do hiring!"), e.getStatusCode());
         }
-        return new ResponseEntity<>(new Message("Hiring accepted!"), status);
+        return new ResponseEntity<>(new Message("Hiring accepted! New group is: " + heroDto.getGroup()), status);
     }
 
     @RequestMapping(value="/hero/assignments", method = RequestMethod.POST)

@@ -36,14 +36,7 @@ logger.info(groupUrl);
 logger.info(membersUsernames);
         List<String> heroUrls = tavernaService.getHeroUrls();
 logger.info(heroUrls);
-        if (!postElection(heroUrls, election)) { // Post election to all members and check availability.
-
-            // i am the new coordinator till the end of the quest/task
-            // solve quests? and then after send answer to the origin owners callback. // temporar
-            //if not do nothing?
-        }
-
-        return false;
+        return !postElection(heroUrls, election);
     }
 
     private List<String> getHigherUsernames(List<String> memberUsernames) {
