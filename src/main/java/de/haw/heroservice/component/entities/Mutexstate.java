@@ -1,8 +1,11 @@
 package de.haw.heroservice.component.entities;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class Mutexstate {
 
-    private State state;
+    private State state = State.RELEASED;
     private int time;
 
     public State getState() {
@@ -19,5 +22,10 @@ public class Mutexstate {
 
     public void setTime(int time) {
         this.time = time;
+    }
+
+    public int incrementTime() {
+        this.time++;
+        return time;
     }
 }

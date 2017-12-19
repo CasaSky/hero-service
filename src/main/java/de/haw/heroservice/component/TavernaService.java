@@ -3,6 +3,7 @@ package de.haw.heroservice.component;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonArray;
 import de.haw.heroservice.BlackboardService;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -127,9 +128,19 @@ public class TavernaService {
         for (String name : membersUsernames) {
             ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl + "/" + name, HttpMethod.GET, entity, ObjectNode.class);
             JsonNode object = response.getBody().get("object");
-           heroUrls.add(object.get("url").asText());
+            heroUrls.add(object.get("url").asText());
         }
 
         return heroUrls;
+    }
+
+    public List<String> getAllHeroes() {
+        List<String> heroes = new ArrayList<>();
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl, HttpMethod.GET, entity, ObjectNode.class);
+        JsonNode objects = response.getBody().get("objects");
+        for (JsonNode node : objects) {
+            heroes.add(node.get("url").asText());
+        }
+        return heroes;
     }
 }

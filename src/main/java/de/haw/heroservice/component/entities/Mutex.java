@@ -1,17 +1,20 @@
 package de.haw.heroservice.component.entities;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class Mutex {
 
-    private String msg;
+    private Msg msg;
     private int time;
     private String reply;
     private String user;
 
-    public String getMsg() {
+    public Msg getMsg() {
         return msg;
     }
 
-    public void setMsg(String msg) {
+    public void setMsg(Msg msg) {
         this.msg = msg;
     }
 

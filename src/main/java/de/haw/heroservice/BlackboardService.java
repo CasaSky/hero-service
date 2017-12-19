@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.haw.heroservice.component.entities.Assignment;
-import de.haw.heroservice.component.entities.Callback;
-import de.haw.heroservice.component.entities.Election;
-import de.haw.heroservice.component.entities.Message;
+import de.haw.heroservice.component.TavernaService;
+import de.haw.heroservice.component.entities.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
@@ -63,6 +61,17 @@ public class BlackboardService {
     private HttpHeaders headers = new HttpHeaders();
 
     ObjectMapper mapper = new ObjectMapper();
+
+    @Autowired
+    private Mutexstate mutextstate;
+
+    @Autowired
+    private List<Mutex> requests;
+
+    @Autowired
+    private List<Mutex> replies;
+
+    private TavernaService tavernaService = new TavernaService();
 
     public BlackboardService() {
 
@@ -120,45 +129,72 @@ public class BlackboardService {
 
         // check if there is a next.
         String next = resource;
-        String tempNext = null;
+        String tempNext;
+        boolean isCriticalSection = false;
         do {
+            // Check if there is no critical section
             if (!isCriticalSection(host + next)) {
                 tempNext = getNext(host + next);
                 if (tempNext != null) {
                     next = tempNext;
                 }
+            } else {
+                // We have a critical section
+                mutextstate.setState(State.WANTING);
+                List<String> heroes = tavernaService.getAllHeroes();
+                sendRequestMsg(heroes);
+                List<String> heroes2 = new ArrayList<>();
+                for (Mutex reply : replies) {
+                    String user = reply.getUser();
+                    for (String hero : heroes) {
+                        String user2 = getUser(hero);
+                        if (user.equals(user2)) {
+                            heroes2.add(hero);
+                            break;
+                        }
+                    }
+
+                }
+                if (heroes.size() > heroes2.size()) {
+                    heroes.removeAll(heroes2);
+                    getMutexState(heroes, 3);
+                }
+
+                //criticalToken = enterCriticalSection(host + next);
+                isCriticalSection = true;
+               break;
             }
             //TODO ....
         } while (tempNext!=null);
 
         //TODO.. be aware of critical section, what to do then????
-        List<String> steps = new ArrayList<>();
-            steps = getSteps(host + next);
-
-        List<String> stepsTokens = new ArrayList<>();
-
-        try {
-            for (String step : steps) {
-                stepsTokens.add(mapper.writeValueAsString(getStepToken(host+step)));
-            }
-        } catch (JsonProcessingException e) {
-            return null;
-        }
-
-
-
-
-       // String deliveryToken = postTokensInNext(stepsTokens, host+next);
-
 
         Callback callbackRequest = new Callback();
+
+        // Prepare tokens.
+        List<String> tokens = new ArrayList<>();
+        if (!isCriticalSection) {
+            // if you can, than enter critical section, and deliver quest token------
+            List<String> steps;
+            steps = getSteps(host + next);
+            try {
+                for (String step : steps) {
+                    tokens.add(mapper.writeValueAsString(getStepToken(host + step)));
+                }
+            } catch (JsonProcessingException e) {
+                return null;
+            }
+            callbackRequest.setResource(assignment.getResource());
+        } else {
+            callbackRequest.setResource(next);
+        }
+
         callbackRequest.setId(assignment.getId());
         callbackRequest.setTask(assignment.getTask());
-        callbackRequest.setResource(assignment.getResource());
         callbackRequest.setMethod(assignment.getMethod());
         JSONArray jArray = new JSONArray();//
-        for (String stepToken : stepsTokens) {
-            jArray.put(stepToken);
+        for (String token : tokens) {
+            jArray.put(token);
         }
         callbackRequest.setData(jArray.toList());
         assignment.setData(jArray.toList());
@@ -168,11 +204,77 @@ public class BlackboardService {
         return sendResultsToCallback(assignment.getCallback(), callbackRequest);
     }
 
+    private boolean getMutexState(List<String> heroes, int counter) {
+
+        counter--;
+
+        HttpEntity<Mutex> entity = new HttpEntity<>(null,headers);
+        List<String> problems = new ArrayList<>();
+        for (String hero : heroes) {
+            String mutexstateUri = getMutexState(hero);
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(hero+mutexstateUri, HttpMethod.GET, entity, ObjectNode.class);
+            String state = response.getBody().get("state").asText();
+            if (state.equals(State.WANTING) || state.equals(State.HELD)) {
+                problems.add(hero);
+            }
+        }
+        if (!problems.isEmpty() && counter > 0) {
+            try {
+                wait(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return getMutexState(problems, counter);
+        } else {
+            return true;
+        }
+
+    }
+
+    private void sendRequestMsg(List<String> heroes) {
+        Mutex mutex = new Mutex();
+        mutex.setMsg(Msg.REQUEST);
+        mutex.setTime(mutextstate.incrementTime());
+        mutex.setReply("/mutex"); //TODO get dynamisch url
+        mutex.setUser(userUri);
+        HttpEntity<Mutex> entity = new HttpEntity<>(mutex,headers);
+        for (String hero : heroes) {
+            String mutexUri = getMutex(hero);
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(hero+mutexUri, HttpMethod.POST, entity, ObjectNode.class);
+        }
+
+    }
+
+    private String getMutex(String hero) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
+        return response.getBody().get("mutex").asText();
+    }
+
+    private String getMutexState(String hero) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
+        return response.getBody().get("mutexstate").asText();
+
+    }
+
+    private String enterCriticalSection(String resourceUrl) {
+        HttpEntity<String> entity = new HttpEntity<>("{}", headers);
+        String criticalToken;
+        try {
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.POST, entity, ObjectNode.class);
+            criticalToken = response.getBody().get("token").asText();
+        } catch (HttpStatusCodeException e) {
+            return null;
+        }
+        return criticalToken;
+    }
+
     private boolean isCriticalSection(String resourceUrl) {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
         boolean criticalSection;
         try {
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.POST, entity, ObjectNode.class);
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.GET, entity, ObjectNode.class);
             criticalSection = response.getBody().get("critical_section").asBoolean(false);
         } catch (Exception e) {
             return false;
@@ -278,15 +380,27 @@ public class BlackboardService {
     }
 
     public ResponseEntity<Message> solveQuest(List<Callback> callbacks) {
-        if (!callbacks.isEmpty()) {
-            String resource = callbacks.get(0).getResource();
-            String task = callbacks.get(0).getTask();
+        String questToken;
+        //TODO make it safe
+        String task = callbacks.get(0).getTask();
+        String resource = callbacks.get(0).getResource();
+        String quest = questUri + "/" + getQuestNumber(task);
+
+        if (!callbacks.isEmpty() && callbacks.size() == 1 && callbacks.get(0).getData().isEmpty()) {
+            Callback callback = callbacks.get(0);
+            String location = getLocation(callback.getTask());
+            String host = "http://" + getHost(location);
+            mutextstate.setState(State.HELD);
+            questToken = enterCriticalSection(host + callback.getResource());
+            mutextstate.setState(State.RELEASED);
+            for (Mutex mutex : requests) {
+                //TODO post reply ok to all
+            }
+        } else {
+
             task = task.substring(1, task.length());
             logger.info(task);
-            String quest = questUri + "/" + getQuestNumber(task);
 
-            String questToken;
-            ResponseEntity<ObjectNode> response = null;
             String tokens = "";
             String komma = ",";
             List<String> newList = new ArrayList<>();
@@ -308,34 +422,35 @@ public class BlackboardService {
                 logger.error(e.getMessage());
                 return new ResponseEntity<>(new Message("could not deliver resource token!", 404), HttpStatus.NOT_FOUND);
             }
+        }
 
-            if (!StringUtils.isEmpty(questToken)) {
+        if (!StringUtils.isEmpty(questToken)) {
 
-                ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
-                ObjectNode tokensNode = rootNode.putObject("tokens");
-                tokensNode
-                        .put(task, questToken);
-                HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
-                //createAuthRestTemplate();
-                logger.info(restTemplate);
-                //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
+            ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
+            ObjectNode tokensNode = rootNode.putObject("tokens");
+            tokensNode
+                    .put(task, questToken);
+            HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
+            logger.info(restTemplate);
+            //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
 
-                logger.info(entity.getBody());
-                HttpStatus status = null;
-                String deliverieUrl = blackboardUrl + quest + deliveriesUri;
-                logger.info(deliverieUrl);
-                try {
-                    response = restTemplate.exchange(deliverieUrl, HttpMethod.POST, entity, ObjectNode.class);
-                    status = response.getStatusCode();
-                    return new ResponseEntity<>(new Message("Maybe delivered?", status.value()), status);
-                } catch (HttpStatusCodeException e) {
-                    logger.error("could not deliver quest token!");
-                    logger.error(e.getMessage());
-                    status = e.getStatusCode();
-                    return new ResponseEntity<>(new Message("could not deliver quest token", status.value()), e.getStatusCode());
-                }
-                //return new ResponseEntity<>(new Message("quest token delivered!"), status);
+            logger.info(entity.getBody());
+            HttpStatus status = null;
+            String deliverieUrl = blackboardUrl + quest + deliveriesUri;
+            logger.info(deliverieUrl);
+            ResponseEntity<ObjectNode> response;
+
+            try {
+                response = restTemplate.exchange(deliverieUrl, HttpMethod.POST, entity, ObjectNode.class);
+                status = response.getStatusCode();
+                return new ResponseEntity<>(new Message("Maybe delivered?", status.value()), status);
+            } catch (HttpStatusCodeException e) {
+                logger.error("could not deliver quest token!");
+                logger.error(e.getMessage());
+                status = e.getStatusCode();
+                return new ResponseEntity<>(new Message("could not deliver quest token", status.value()), e.getStatusCode());
             }
+            //return new ResponseEntity<>(new Message("quest token delivered!"), status);
         }
         logger.error("Missing callback address!");
         return new ResponseEntity<>(new Message("Missing callback address!", 400), HttpStatus.BAD_REQUEST);
@@ -354,5 +469,12 @@ public class BlackboardService {
         ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + taskUri, HttpMethod.GET, entity, ObjectNode.class);
         JsonNode object =  response.getBody().get("object");
         return object.get("required_players").asText();
+    }
+
+    public String getUser(String heroUrl) {
+            HttpEntity<String> entity = new HttpEntity<>(null,headers);
+
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(heroUrl, HttpMethod.GET, entity, ObjectNode.class);
+            return response.getBody().get("user").asText();
     }
 }

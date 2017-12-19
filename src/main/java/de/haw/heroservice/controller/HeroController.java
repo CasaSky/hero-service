@@ -8,6 +8,7 @@ import de.haw.heroservice.component.utils.BullyAlgorithm;
 import de.haw.heroservice.component.utils.MutexAlgorithm;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,11 +47,20 @@ public class HeroController {
 
     private List<Callback> callbacks = new ArrayList<>();
 
-    private Mutexstate mutexstate = new Mutexstate();
-    private Mutex mutex;
+    @Autowired
+    private Mutexstate mutexstate;
+
+    @Autowired
+    private List<Mutex> requests;
+
+    @Autowired
+    private List<Mutex> replies;
 
     @Autowired
     private MutexAlgorithm mutexAlgorithm;
+
+    @Value("${uri.user}")
+    private String userUri;
 
     private Logger logger = Logger.getLogger(HeroController.class);
 
@@ -146,7 +156,17 @@ public class HeroController {
 
     @RequestMapping(value="/hero/mutex", method = RequestMethod.POST)
     public ResponseEntity<Message> mutex(@RequestBody Mutex mutex) {
-        this.mutex = mutex;
+        if (mutex.getMsg().equals(Msg.REQUEST)) {
+            if (mutexstate.getState().equals(State.RELEASED)
+                    || (mutexstate.getState().equals(State.WANTING) &&
+                                    (mutex.getTime() < mutexstate.getTime() || (mutex.getTime() == mutexstate.getTime() && mutex.getUser().compareTo(userUri) == -1)))){
+                //TODO post on mutex reply a mutex reply mesage reply ok
+            } else {
+                requests.add(mutex);
+            }
+        } else {
+            replies.add(mutex);
+        }
         mutexstate.setTime(mutexAlgorithm.getTime(mutexstate.getTime(), mutex.getTime()));
         return new ResponseEntity<>(new Message("Mutex done!", 200),HttpStatus.OK);
     }
