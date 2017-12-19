@@ -124,13 +124,9 @@ public class TavernaService {
 
     // Returns a list of hero urls
     public List<String> getHeroUrls() {
-
         for (String name : membersUsernames) {
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl + "/" + name, HttpMethod.GET, entity, ObjectNode.class);
-            JsonNode object = response.getBody().get("object");
-            heroUrls.add(object.get("url").asText());
+            heroUrls.add(getHeroUrl(name));
         }
-
         return heroUrls;
     }
 
@@ -142,5 +138,11 @@ public class TavernaService {
             heroes.add(node.get("url").asText());
         }
         return heroes;
+    }
+
+    public String getHeroUrl(String name) {
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl + "/" + name, HttpMethod.GET, entity, ObjectNode.class);
+        JsonNode object = response.getBody().get("object");
+        return object.get("url").asText();
     }
 }
