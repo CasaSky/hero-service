@@ -63,7 +63,7 @@ public class HeroServiceApplication {
 	}
 
 	private ClientHttpRequestFactory getClientHttpRequestFactory() {
-		int timeout = 5000;
+		int timeout = 1000;
 		RequestConfig config = RequestConfig.custom()
 				.setConnectTimeout(timeout)
 				.setConnectionRequestTimeout(timeout)

@@ -8,11 +8,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.entities.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -70,7 +75,8 @@ public class BlackboardService {
     @Autowired
     private List<Mutex> replies;
 
-    private TavernaService tavernaService = new TavernaService();
+    @Autowired
+    private TavernaService tavernaService;
 
     public BlackboardService() {
 
@@ -86,7 +92,7 @@ public class BlackboardService {
     }
 
     private void createAuthRestTemplate() {
-        restTemplate = new RestTemplate();
+        restTemplate = new RestTemplate(getClientHttpRequestFactory());
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Token "+loginToken);
     }
@@ -103,6 +109,8 @@ public class BlackboardService {
 
             } catch (HttpStatusCodeException e) {
                 return new ResponseEntity<>(e.getCause(), e.getStatusCode());
+            } catch (Exception e) {
+                return new ResponseEntity<>(e.getCause(), HttpStatus.BAD_GATEWAY);
             }
             return response;
         }
@@ -146,7 +154,7 @@ public class BlackboardService {
                     String user = reply.getUser();
                     for (String hero : heroes) {
                         String user2 = getUser(hero);
-                        if (user.equals(user2)) {
+                        if (!StringUtils.isEmpty(user) && !StringUtils.isEmpty(user2) && user.equals(user2)) {
                             heroes2.add(hero);
                             break;
                         }
@@ -386,11 +394,15 @@ public class BlackboardService {
     public String getUser(String heroUrl) {
             HttpEntity<String> entity = new HttpEntity<>(null,headers);
 
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(heroUrl, HttpMethod.GET, entity, ObjectNode.class);
-            return response.getBody().get("user").asText();
+            try {
+                ResponseEntity<ObjectNode> response = restTemplate.exchange(heroUrl, HttpMethod.GET, entity, ObjectNode.class);
+                return response.getBody().get("user").asText();
+            } catch (Exception e) {
+                return null;
+            }
     }
 
-    private boolean getMutexState(List<String> heroes, int counter) {
+    private synchronized boolean getMutexState(List<String> heroes, int counter) {
 
         counter--;
 
@@ -398,15 +410,19 @@ public class BlackboardService {
         List<String> problems = new ArrayList<>();
         for (String hero : heroes) {
             String mutexstateUri = getMutexState(hero);
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(hero+mutexstateUri, HttpMethod.GET, entity, ObjectNode.class);
-            String state = response.getBody().get("state").asText();
-            if (state.equals(State.WANTING) || state.equals(State.HELD)) {
+            try {
+                ResponseEntity<ObjectNode> response = restTemplate.exchange(hero + mutexstateUri, HttpMethod.GET, entity, ObjectNode.class);
+                String state = response.getBody().get("state").asText();
+                if (state.equals(State.WANTING) || state.equals(State.HELD)) {
+                    problems.add(hero);
+                }
+            } catch (Exception e) {
                 problems.add(hero);
             }
         }
         if (!problems.isEmpty() && counter > 0) {
             try {
-                wait(100);
+                wait(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -426,7 +442,11 @@ public class BlackboardService {
         HttpEntity<Mutex> entity = new HttpEntity<>(mutex,headers);
         for (String hero : heroes) {
             String mutexUri = getMutex(hero);
-            restTemplate.exchange(hero+mutexUri, HttpMethod.POST, entity, ObjectNode.class);
+            try {
+                restTemplate.exchange("http://" + hero + mutexUri, HttpMethod.POST, entity, ObjectNode.class);
+            } catch (Exception e) {
+
+            }
         }
     }
 
@@ -438,21 +458,36 @@ public class BlackboardService {
         reply.setUser(userUri);
         HttpEntity<Mutex> entity = new HttpEntity<>(reply,headers);
         for (Mutex mutex : requests) {
-            restTemplate.exchange(mutex.getReply(), HttpMethod.POST, entity, ObjectNode.class);
+            try {
+                restTemplate.exchange(mutex.getReply(), HttpMethod.POST, entity, ObjectNode.class);
+            } catch (Exception e) {
+
+            }
         }
     }
 
     private String getMutex(String hero) {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
-        ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
-        return response.getBody().get("mutex").asText();
+        try {
+            ResponseEntity<ObjectNode> response = restTemplate.exchange("http://" + hero, HttpMethod.GET, entity, ObjectNode.class);
+            return response.getBody().get("mutex").asText();
+        } catch (HttpStatusCodeException e) {
+            return null;
+        } catch (Exception e2) {
+            return null;
+        }
     }
 
     private String getMutexState(String hero) {
         HttpEntity<String> entity = new HttpEntity<>(null,headers);
-        ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
-        return response.getBody().get("mutexstate").asText();
-
+        try {
+            ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
+            return response.getBody().get("mutexstate").asText();
+        } catch (HttpStatusCodeException e) {
+            return null;
+        } catch (Exception e2) {
+            return null;
+        }
     }
 
     private String enterCriticalSection(String resourceUrl) {
@@ -477,5 +512,19 @@ public class BlackboardService {
             return false;
         }
         return criticalSection;
+    }
+
+    private ClientHttpRequestFactory getClientHttpRequestFactory() {
+        int timeout = 1000;
+        RequestConfig config = RequestConfig.custom()
+                .setConnectTimeout(timeout)
+                .setConnectionRequestTimeout(timeout)
+                .setSocketTimeout(timeout)
+                .build();
+        CloseableHttpClient client = HttpClientBuilder
+                .create()
+                .setDefaultRequestConfig(config)
+                .build();
+        return new HttpComponentsClientHttpRequestFactory(client);
     }
 }
