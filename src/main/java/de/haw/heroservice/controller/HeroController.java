@@ -49,6 +49,8 @@ public class HeroController {
     private Mutexstate mutexstate = new Mutexstate();
     private Mutex mutex;
 
+    private boolean electionOk;
+
     @Autowired
     private MutexAlgorithm mutexAlgorithm;
 
@@ -134,8 +136,14 @@ public class HeroController {
     public ResponseEntity<?> election(@RequestBody Election election) {
         logger.info("Election request received!");
         try {
-            if (bullyAlgorithm.electHero(heroDto, election)) {
-                addAssignment(election.getJob());
+            if (election.getPayload().equals(Payload.election)) {
+                bullyAlgorithm.start(heroDto, election);
+                if (!electionOk) {
+                    bullyAlgorithm.postElectionCoordinatorToAll(heroDto.getGroup(), election);
+                    addAssignment(election.getJob());
+                }
+            } else if (election.getPayload().equals(Payload.ok)) {
+                electionOk = true;
             }
         } catch (HttpStatusCodeException e) {
             logger.error("Error on election request!", e);

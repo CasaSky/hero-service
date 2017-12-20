@@ -5,6 +5,7 @@ import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.dtos.HeroDto;
 import de.haw.heroservice.component.entities.Election;
 import de.haw.heroservice.component.entities.Message;
+import de.haw.heroservice.component.entities.Payload;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,33 +30,60 @@ public class BullyAlgorithm {
 
     private Logger logger = Logger.getLogger(BullyAlgorithm.class);
 
-    // If no one answers, then solve task -> return false
-    public boolean electHero(HeroDto heroDto, Election election) {
+    public synchronized void start(HeroDto heroDto, Election election) {
+
         String groupUrl = heroDto.getGroup();
-logger.info(groupUrl);
-        List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames(groupUrl));// higher usernames
-logger.info(membersUsernames);
+
+        //---> When an election message is received:
+        //---> 1 Send ok message to the sender
+        //---> 2 Post election message to the heroes in our group with higher usernames.
+        postElectionOk(election.getUser(), election);
+        postElectionToHigherHeroes(groupUrl, election);
+        try {
+            wait(2000);
+        } catch (InterruptedException e) {
+
+        }
+    }
+
+    public void postElectionCoordinatorToAll(String groupUrl, Election election) {
+        election.setPayload(Payload.coordinator);
+        List<String> membersUsernames = tavernaService.getMembersUsernames(groupUrl);
+        logger.info(membersUsernames);
         List<String> heroUrls = tavernaService.getHeroUrls();
-logger.info(heroUrls);
-        return !postElection(heroUrls, election);
+        logger.info(heroUrls);
+
+        for (String heroUrl : heroUrls) {
+            try {
+                blackboardService.postElection(heroUrl, election);
+            } catch (ResourceAccessException ex) {
+
+            }
+        }
+    }
+
+    private void postElectionOk(String user, Election election) {
+        election.setPayload(Payload.ok);
+        blackboardService.postElection(user, election);
     }
 
     private List<String> getHigherUsernames(List<String> memberUsernames) {
        return memberUsernames.stream().filter(u -> u.compareTo(username) == 1).collect(Collectors.toList());
     }
 
-    private boolean postElection(List<String> heroUrls, Election election) {
+    private void postElectionToHigherHeroes(String groupUrl, Election election) {
+        election.setPayload(Payload.election);
+        List<String> membersUsernames = getHigherUsernames(tavernaService.getMembersUsernames(groupUrl));// higher usernames
+        logger.info(membersUsernames);
+        List<String> heroUrls = tavernaService.getHeroUrls();
+        logger.info(heroUrls);
+
         for (String heroUrl : heroUrls) {
             try {
-                ResponseEntity<?> response = blackboardService.postElection(heroUrl, election);
-logger.info(response);
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    return true;
-                }
+                blackboardService.postElection(heroUrl, election);
             } catch (ResourceAccessException ex) {
 
             }
         }
-        return false;
     }
 }
