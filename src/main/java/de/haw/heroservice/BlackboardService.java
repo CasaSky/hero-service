@@ -491,6 +491,7 @@ public class BlackboardService {
     }
 
     private String enterCriticalSection(String resourceUrl) {
+        createAuthRestTemplate();
         HttpEntity<String> entity = new HttpEntity<>("{}", headers);
         String criticalToken;
         try {

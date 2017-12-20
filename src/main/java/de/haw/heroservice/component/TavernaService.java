@@ -135,7 +135,9 @@ public class TavernaService {
         ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl, HttpMethod.GET, entity, ObjectNode.class);
         JsonNode objects = response.getBody().get("objects");
         for (JsonNode node : objects) {
-            heroes.add(node.get("url").asText());
+            if (node.get("capabilities").asText().toLowerCase().contains("mutex")) {
+                heroes.add(node.get("url").asText());
+            }
         }
         return heroes;
     }
