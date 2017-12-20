@@ -291,10 +291,21 @@ public class BlackboardService {
             if (!StringUtils.isEmpty(questToken)) {
 
                 ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
-                ObjectNode tokensNode = rootNode.putObject("tokens");
+                /*ObjectNode tokensNode = rootNode.putObject("tokens");
                 tokensNode
-                        .put(task, questToken);
-                HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
+                        .put(task, questToken);*/
+                String tokensText = "tokens";
+                String taskText = null;
+                try {
+                    tokensText = mapper.writeValueAsString(tokensText);
+                    taskText = mapper.writeValueAsString(task);
+                    questToken = mapper.writeValueAsString(questToken);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+                String post = "{" + tokensText + ":{"+ taskText + ":" + questToken + "}}";
+                
+                HttpEntity<String> entity = new HttpEntity<>(post, headers);
                 //createAuthRestTemplate();
                 logger.info(restTemplate);
                 //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
