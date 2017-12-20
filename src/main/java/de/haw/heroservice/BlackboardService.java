@@ -161,6 +161,10 @@ public class BlackboardService {
                     }
 
                 }
+                // wait for warten alle check replies list
+                //TODO----------------------------
+                //TODO warten 300 mal 1 sekunde : check replies
+
                 if (heroes.size() > heroes2.size()) {
                     heroes.removeAll(heroes2);
                     getMutexState(heroes, 3);
@@ -402,6 +406,7 @@ public class BlackboardService {
             }
     }
 
+    ///TODO ----------------------------------------------------------------------
     private synchronized boolean getMutexState(List<String> heroes, int counter) {
 
         counter--;
@@ -422,7 +427,7 @@ public class BlackboardService {
         }
         if (!problems.isEmpty() && counter > 0) {
             try {
-                wait(1);
+                wait(1); // 2min.
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -430,7 +435,7 @@ public class BlackboardService {
         } else {
             return true;
         }
-
+        //TODO is becomes  smaller then repeat else finish
     }
 
     private void postRequestMsg(List<String> heroes) {

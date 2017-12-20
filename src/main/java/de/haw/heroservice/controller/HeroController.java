@@ -160,7 +160,7 @@ public class HeroController {
             if (mutexstate.getState().equals(State.RELEASED)
                     || (mutexstate.getState().equals(State.WANTING) &&
                                     (mutex.getTime() < mutexstate.getTime() || (mutex.getTime() == mutexstate.getTime() && mutex.getUser().compareTo(userUri) == -1)))){
-                //TODO post on mutex reply a mutex reply mesage reply ok
+                //---TODO reply the mutex one
             } else {
                 requests.add(mutex);
             }
