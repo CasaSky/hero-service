@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.haw.heroservice.component.TavernaService;
 import de.haw.heroservice.component.entities.*;
+import de.haw.heroservice.component.utils.MutexAlgorithm;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -63,20 +64,18 @@ public class BlackboardService {
     private String loginToken;
 
     private HttpHeaders headers = new HttpHeaders();
+    public HttpHeaders getHeaders() {
+        return headers;
+    }
+
 
     ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
-    private Mutexstate mutextstate;
+    private MutexAlgorithm mutexAlgorithm;
 
     @Autowired
-    private List<Mutex> requests;
-
-    @Autowired
-    private List<Mutex> replies;
-
-    @Autowired
-    private TavernaService tavernaService;
+    private List<MutexMessage> replies;
 
     public BlackboardService() {
 
@@ -146,11 +145,9 @@ public class BlackboardService {
                 }
             } else {
                 // We have a critical section
-                mutextstate.setState(State.WANTING);
-                List<String> heroes = tavernaService.getAllHeroes();
-                postRequestMsg(heroes);
+                List<String> heroes = mutexAlgorithm.prepareCriticalSection();
                 List<String> heroes2 = new ArrayList<>();
-                for (Mutex reply : replies) {
+                for (MutexMessage reply : replies) {
                     String user = reply.getUser();
                     for (String hero : heroes) {
                         String user2 = getUser(hero);
@@ -317,10 +314,7 @@ public class BlackboardService {
             Callback callback = callbacks.get(0);
             String location = getLocation(callback.getTask());
             String host = "http://" + getHost(location);
-            mutextstate.setState(State.HELD);
-            questToken = enterCriticalSection(host + callback.getResource());
-            mutextstate.setState(State.RELEASED);
-            postReplyMsg();
+            questToken = mutexAlgorithm.enterCriticalSection(host + callback.getResource());
         } else {
 
             task = task.substring(1, task.length());
@@ -411,7 +405,7 @@ public class BlackboardService {
 
         counter--;
 
-        HttpEntity<Mutex> entity = new HttpEntity<>(null,headers);
+        HttpEntity<MutexMessage> entity = new HttpEntity<>(null,headers);
         List<String> problems = new ArrayList<>();
         for (String hero : heroes) {
             String mutexstateUri = getMutexState(hero);
@@ -438,49 +432,14 @@ public class BlackboardService {
         //TODO is becomes  smaller then repeat else finish
     }
 
-    private void postRequestMsg(List<String> heroes) {
-        Mutex mutex = new Mutex();
-        mutex.setMsg(Msg.REQUEST);
-        mutex.setTime(mutextstate.incrementTime());
-        mutex.setReply(tavernaService.getHeroUrl(username)+"/mutex");
-        mutex.setUser(userUri);
-        HttpEntity<Mutex> entity = new HttpEntity<>(mutex,headers);
-        for (String hero : heroes) {
-            String mutexUri = getMutex(hero);
+    public void postReplyMsg(MutexMessage replyMessage, String reply) {
+
+        HttpEntity<MutexMessage> entity = new HttpEntity<>(replyMessage,headers);
             try {
-                restTemplate.exchange("http://" + hero + mutexUri, HttpMethod.POST, entity, ObjectNode.class);
+                restTemplate.exchange(reply, HttpMethod.POST, entity, ObjectNode.class);
             } catch (Exception e) {
 
             }
-        }
-    }
-
-    private void postReplyMsg() {
-        Mutex reply = new Mutex();
-        reply.setMsg(Msg.REPLYOK);
-        reply.setTime(mutextstate.incrementTime());
-        reply.setReply(tavernaService.getHeroUrl(username)+"/mutex");
-        reply.setUser(userUri);
-        HttpEntity<Mutex> entity = new HttpEntity<>(reply,headers);
-        for (Mutex mutex : requests) {
-            try {
-                restTemplate.exchange(mutex.getReply(), HttpMethod.POST, entity, ObjectNode.class);
-            } catch (Exception e) {
-
-            }
-        }
-    }
-
-    private String getMutex(String hero) {
-        HttpEntity<String> entity = new HttpEntity<>(null,headers);
-        try {
-            ResponseEntity<ObjectNode> response = restTemplate.exchange("http://" + hero, HttpMethod.GET, entity, ObjectNode.class);
-            return response.getBody().get("mutex").asText();
-        } catch (HttpStatusCodeException e) {
-            return null;
-        } catch (Exception e2) {
-            return null;
-        }
     }
 
     private String getMutexState(String hero) {
@@ -493,19 +452,6 @@ public class BlackboardService {
         } catch (Exception e2) {
             return null;
         }
-    }
-
-    private String enterCriticalSection(String resourceUrl) {
-        createAuthRestTemplate();
-        HttpEntity<String> entity = new HttpEntity<>("{}", headers);
-        String criticalToken;
-        try {
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(resourceUrl, HttpMethod.POST, entity, ObjectNode.class);
-            criticalToken = response.getBody().get("token").asText();
-        } catch (HttpStatusCodeException e) {
-            return null;
-        }
-        return criticalToken;
     }
 
     private boolean isCriticalSection(String resourceUrl) {

@@ -3,7 +3,7 @@ package de.haw.heroservice.component.entities;
 import org.springframework.stereotype.Component;
 
 @Component
-public class Mutex {
+public class MutexMessage {
 
     private Msg msg;
     private int time;

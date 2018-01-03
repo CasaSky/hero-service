@@ -48,15 +48,6 @@ public class HeroController {
     private List<Callback> callbacks = new ArrayList<>();
 
     @Autowired
-    private Mutexstate mutexstate;
-
-    @Autowired
-    private List<Mutex> requests;
-
-    @Autowired
-    private List<Mutex> replies;
-
-    @Autowired
     private MutexAlgorithm mutexAlgorithm;
 
     @Value("${uri.user}")
@@ -64,6 +55,8 @@ public class HeroController {
 
     private Logger logger = Logger.getLogger(HeroController.class);
 
+    @Autowired
+    private Mutexstate mutexstate;
 
     @RequestMapping(value = "/hero", method = RequestMethod.GET)
     public ResponseEntity<HeroDto> info() {
@@ -155,19 +148,8 @@ public class HeroController {
     }
 
     @RequestMapping(value="/hero/mutex", method = RequestMethod.POST)
-    public ResponseEntity<Message> mutex(@RequestBody Mutex mutex) {
-        if (mutex.getMsg().equals(Msg.REQUEST)) {
-            if (mutexstate.getState().equals(State.RELEASED)
-                    || (mutexstate.getState().equals(State.WANTING) &&
-                                    (mutex.getTime() < mutexstate.getTime() || (mutex.getTime() == mutexstate.getTime() && mutex.getUser().compareTo(userUri) == -1)))){
-                //---TODO reply the mutex one
-            } else {
-                requests.add(mutex);
-            }
-        } else {
-            replies.add(mutex);
-        }
-        mutexstate.setTime(mutexAlgorithm.getTime(mutexstate.getTime(), mutex.getTime()));
+    public ResponseEntity<Message> mutex(@RequestBody MutexMessage mutexMessage) {
+        mutexAlgorithm.startMutex(mutexMessage);
         return new ResponseEntity<>(new Message("Mutex done!", 200),HttpStatus.OK);
     }
 
