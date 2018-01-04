@@ -3,7 +3,7 @@ package de.haw.heroservice.component.entities;
 public class Election {
 
     private String algorithm;
-    private String payload;
+    private Payload payload;
     private String user;
     private Assignment job;
     private String message;
@@ -16,11 +16,11 @@ public class Election {
         this.algorithm = algorithm;
     }
 
-    public String getPayload() {
+    public Payload getPayload() {
         return payload;
     }
 
-    public void setPayload(String payload) {
+    public void setPayload(Payload payload) {
         this.payload = payload;
     }
 
