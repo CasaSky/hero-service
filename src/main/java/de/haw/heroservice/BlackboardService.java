@@ -306,6 +306,8 @@ public class BlackboardService {
     public ResponseEntity<Message> solveQuest(List<Callback> callbacks) {
         String questToken;
         //TODO make it safe
+        ResponseEntity<ObjectNode> response = null;
+
         String task = callbacks.get(0).getTask();
         String resource = callbacks.get(0).getResource();
         String quest = questUri + "/" + getQuestNumber(task);
@@ -346,10 +348,22 @@ public class BlackboardService {
         if (!StringUtils.isEmpty(questToken)) {
 
             ObjectNode rootNode = JsonNodeFactory.instance.objectNode();
-            ObjectNode tokensNode = rootNode.putObject("tokens");
-            tokensNode
-                    .put(task, questToken);
-            HttpEntity<ObjectNode> entity = new HttpEntity<>(rootNode, headers);
+                /*ObjectNode tokensNode = rootNode.putObject("tokens");
+                tokensNode
+                        .put(task, questToken);*/
+            String tokensText = "tokens";
+            String taskText = null;
+            try {
+                tokensText = mapper.writeValueAsString(tokensText);
+                taskText = mapper.writeValueAsString(task);
+                questToken = mapper.writeValueAsString(questToken);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+            String post = "{" + tokensText + ":{"+ taskText + ":" + questToken + "}}";
+
+            HttpEntity<String> entity = new HttpEntity<>(post, headers);
+            //createAuthRestTemplate();
             logger.info(restTemplate);
             //String json = "{\"tokens\":{\"" + task + "\":" + questToken + "}}";
 
@@ -357,8 +371,6 @@ public class BlackboardService {
             HttpStatus status = null;
             String deliverieUrl = blackboardUrl + quest + deliveriesUri;
             logger.info(deliverieUrl);
-            ResponseEntity<ObjectNode> response;
-
             try {
                 response = restTemplate.exchange(deliverieUrl, HttpMethod.POST, entity, ObjectNode.class);
                 status = response.getStatusCode();
@@ -369,9 +381,8 @@ public class BlackboardService {
                 status = e.getStatusCode();
                 return new ResponseEntity<>(new Message("could not deliver quest token", status.value()), e.getStatusCode());
             }
+            //return new ResponseEntity<>(new Message("quest token delivered!"), status);
         }
-        logger.error("Missing callback address!");
-        return new ResponseEntity<>(new Message("Missing callback address!", 400), HttpStatus.BAD_REQUEST);
     }
 
     private String getQuestNumber(String taskUri) {
