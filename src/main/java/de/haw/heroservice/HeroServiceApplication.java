@@ -1,7 +1,7 @@
 package de.haw.heroservice;
 
-import de.haw.heroservice.component.dtos.HeroDto;
-import de.haw.heroservice.component.TavernaService;
+import de.haw.heroservice.dtos.HeroDto;
+import de.haw.heroservice.services.TavernaService;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;

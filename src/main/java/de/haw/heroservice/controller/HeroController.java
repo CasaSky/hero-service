@@ -1,11 +1,11 @@
 package de.haw.heroservice.controller;
 
-import de.haw.heroservice.BlackboardService;
-import de.haw.heroservice.component.entities.*;
-import de.haw.heroservice.component.dtos.HeroDto;
-import de.haw.heroservice.component.TavernaService;
-import de.haw.heroservice.component.utils.BullyAlgorithm;
-import de.haw.heroservice.component.utils.MutexAlgorithm;
+import de.haw.heroservice.entities.*;
+import de.haw.heroservice.services.BlackboardService;
+import de.haw.heroservice.dtos.HeroDto;
+import de.haw.heroservice.services.TavernaService;
+import de.haw.heroservice.utils.BullyAlgorithm;
+import de.haw.heroservice.utils.MutexAlgorithm;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

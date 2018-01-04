@@ -1,4 +1,4 @@
-package de.haw.heroservice.component.utils;
+package de.haw.heroservice.utils;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.client.config.RequestConfig;

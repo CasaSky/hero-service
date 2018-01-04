@@ -1,4 +1,4 @@
-package de.haw.heroservice.component.entities;
+package de.haw.heroservice.entities;
 
 import org.springframework.stereotype.Component;
 

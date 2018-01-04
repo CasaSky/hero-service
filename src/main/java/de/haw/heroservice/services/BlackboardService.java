@@ -1,13 +1,12 @@
-package de.haw.heroservice;
+package de.haw.heroservice.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.haw.heroservice.component.TavernaService;
-import de.haw.heroservice.component.entities.*;
-import de.haw.heroservice.component.utils.MutexAlgorithm;
+import de.haw.heroservice.entities.*;
+import de.haw.heroservice.utils.MutexAlgorithm;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;

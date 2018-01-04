@@ -1,15 +1,13 @@
-package de.haw.heroservice.component.utils;
+package de.haw.heroservice.utils;
 
-import de.haw.heroservice.BlackboardService;
-import de.haw.heroservice.component.TavernaService;
-import de.haw.heroservice.component.dtos.HeroDto;
-import de.haw.heroservice.component.entities.Election;
-import de.haw.heroservice.component.entities.Message;
-import de.haw.heroservice.component.entities.Payload;
+import de.haw.heroservice.services.BlackboardService;
+import de.haw.heroservice.services.TavernaService;
+import de.haw.heroservice.dtos.HeroDto;
+import de.haw.heroservice.entities.Election;
+import de.haw.heroservice.entities.Payload;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 

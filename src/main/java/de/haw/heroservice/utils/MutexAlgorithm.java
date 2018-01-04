@@ -1,9 +1,9 @@
-package de.haw.heroservice.component.utils;
+package de.haw.heroservice.utils;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.haw.heroservice.BlackboardService;
-import de.haw.heroservice.component.TavernaService;
-import de.haw.heroservice.component.entities.*;
+import de.haw.heroservice.services.BlackboardService;
+import de.haw.heroservice.services.TavernaService;
+import de.haw.heroservice.entities.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;

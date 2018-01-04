@@ -1,24 +1,21 @@
-package de.haw.heroservice.component.entities;
+package de.haw.heroservice.entities;
+
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 
-public class Assignment {
+public class Callback {
 
     private String id;
-
     private String task;
-
     private String resource;
-
     private String method;
-
     private List<Object> data;
-
-    private String callback;
-
+    @Value("${url.user}")
+    private String user;
     private String message;
 
-    public Assignment() {}
+    public Callback() {}
 
     public String getId() {
         return id;
@@ -60,12 +57,12 @@ public class Assignment {
         this.data = data;
     }
 
-    public String getCallback() {
-        return callback;
+    public String getUser() {
+        return user;
     }
 
-    public void setCallback(String callback) {
-        this.callback = callback;
+    public void setUser(String user) {
+        this.user = user;
     }
 
     public String getMessage() {
