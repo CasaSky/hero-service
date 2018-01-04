@@ -130,7 +130,7 @@ public class TavernaService {
         return heroUrls;
     }
 
-    public List<String> getAllHeroes() {
+    public List<String> getAllMutexHeroes() {
         List<String> heroes = new ArrayList<>();
         ResponseEntity<ObjectNode> response = restTemplate.exchange(tavernaAdventurersUrl, HttpMethod.GET, entity, ObjectNode.class);
         JsonNode objects = response.getBody().get("objects");

@@ -294,11 +294,11 @@ public class BlackboardService {
         String resource = callbacks.get(0).getResource();
         String quest = questUri + "/" + getQuestNumber(task);
 
-        if (!callbacks.isEmpty() && callbacks.size() == 1 && callbacks.get(0).getData().isEmpty()) {
+        if (isMutexQuest(quest)) {
             Callback callback = callbacks.get(0);
             String location = getLocation(callback.getTask());
             String host = "http://" + getHost(location);
-            questToken = mutexAlgorithm.enterCriticalSection(host + callback.getResource());
+            questToken = mutexAlgorithm.enterCriticalSection(host + resource);
         } else {
 
             task = task.substring(1, task.length());
@@ -365,6 +365,14 @@ public class BlackboardService {
             }
         }
         return new ResponseEntity<>(new Message("quest token delivered!", response.getStatusCode().value()), response.getStatusCode());
+    }
+
+    private boolean isMutexQuest(String questUri) {
+        HttpEntity<String> entity = new HttpEntity<>(null,headers);
+
+        ResponseEntity<ObjectNode> response = restTemplate.exchange(blackboardUrl + questUri, HttpMethod.GET, entity, ObjectNode.class);
+        JsonNode object =  response.getBody().get("object");
+        return object.get("requirements").asText().equals("mutex");
     }
 
     private String getQuestNumber(String taskUri) {

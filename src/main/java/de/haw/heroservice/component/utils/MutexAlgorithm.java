@@ -79,7 +79,7 @@ public class MutexAlgorithm {
      */
     public List<String> prepareCriticalSection() {
         wanting();
-        List<String> heroes = tavernaService.getAllHeroes(); //TODO only those with capability mutex
+        List<String> heroes = tavernaService.getAllMutexHeroes();
         postRequestMsg(heroes);
         return heroes;
     }

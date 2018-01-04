@@ -47,9 +47,6 @@ public class HeroController {
 
     private List<Callback> callbacks = new ArrayList<>();
 
-    private Mutexstate mutexstate = new Mutexstate();
-    private Mutex mutex;
-
     private boolean electionOk;
 
     @Autowired
@@ -119,8 +116,7 @@ public class HeroController {
     }
 
     @RequestMapping(value="/hero/callback", method = RequestMethod.POST)
-    public ResponseEntity<Message> callback(@RequestBody Callback callback) { //TODO need only string for data?
-        //TODO post tokens in resource, and post result token in quest deliveries.
+    public ResponseEntity<Message> callback(@RequestBody Callback callback) {
         callbacks.add(callback);
         logger.info("Post on callback received!");
         requiredPlayers++;
