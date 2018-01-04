@@ -363,8 +363,8 @@ public class BlackboardService {
                 status = e.getStatusCode();
                 return new ResponseEntity<>(new Message("could not deliver quest token", status.value()), e.getStatusCode());
             }
-            //return new ResponseEntity<>(new Message("quest token delivered!"), status);
         }
+        return new ResponseEntity<>(new Message("quest token delivered!", response.getStatusCode().value()), response.getStatusCode());
     }
 
     private String getQuestNumber(String taskUri) {
