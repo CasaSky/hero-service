@@ -74,9 +74,6 @@ public class BlackboardService {
     @Autowired
     private MutexAlgorithm mutexAlgorithm;
 
-    @Autowired
-    private List<MutexMessage> replies;
-
     public BlackboardService() {
 
     }
@@ -146,25 +143,10 @@ public class BlackboardService {
             } else {
                 // We have a critical section
                 List<String> heroes = mutexAlgorithm.prepareCriticalSection();
-                List<String> heroes2 = new ArrayList<>();
-                for (MutexMessage reply : replies) {
-                    String user = reply.getUser();
-                    for (String hero : heroes) {
-                        String user2 = getUser(hero);
-                        if (!StringUtils.isEmpty(user) && !StringUtils.isEmpty(user2) && user.equals(user2)) {
-                            heroes2.add(hero);
-                            break;
-                        }
-                    }
 
-                }
-                // wait for warten alle check replies list
-                //TODO----------------------------
-                //TODO warten 300 mal 1 sekunde : check replies
-
-                if (heroes.size() > heroes2.size()) {
-                    heroes.removeAll(heroes2);
-                    getMutexState(heroes, 3);
+                if (heroes.size() > mutexAlgorithm.getRepliedHeroesList().size()) {
+                    heroes.removeAll(mutexAlgorithm.getRepliedHeroesList());
+                    mutexAlgorithm.checkMutexState(heroes);
                 }
 
                 isCriticalSection = true;
@@ -411,38 +393,6 @@ public class BlackboardService {
             }
     }
 
-    ///TODO ----------------------------------------------------------------------
-    private synchronized boolean getMutexState(List<String> heroes, int counter) {
-
-        counter--;
-
-        HttpEntity<MutexMessage> entity = new HttpEntity<>(null,headers);
-        List<String> problems = new ArrayList<>();
-        for (String hero : heroes) {
-            String mutexstateUri = getMutexState(hero);
-            try {
-                ResponseEntity<ObjectNode> response = restTemplate.exchange(hero + mutexstateUri, HttpMethod.GET, entity, ObjectNode.class);
-                String state = response.getBody().get("state").asText();
-                if (state.equals(State.WANTING) || state.equals(State.HELD)) {
-                    problems.add(hero);
-                }
-            } catch (Exception e) {
-                problems.add(hero);
-            }
-        }
-        if (!problems.isEmpty() && counter > 0) {
-            try {
-                wait(1); // 2min.
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return getMutexState(problems, counter);
-        } else {
-            return true;
-        }
-        //TODO is becomes  smaller then repeat else finish
-    }
-
     public void postReplyMsg(MutexMessage replyMessage, String reply) {
 
         HttpEntity<MutexMessage> entity = new HttpEntity<>(replyMessage,headers);
@@ -451,18 +401,6 @@ public class BlackboardService {
             } catch (Exception e) {
 
             }
-    }
-
-    private String getMutexState(String hero) {
-        HttpEntity<String> entity = new HttpEntity<>(null,headers);
-        try {
-            ResponseEntity<ObjectNode> response = restTemplate.exchange(hero, HttpMethod.GET, entity, ObjectNode.class);
-            return response.getBody().get("mutexstate").asText();
-        } catch (HttpStatusCodeException e) {
-            return null;
-        } catch (Exception e2) {
-            return null;
-        }
     }
 
     private boolean isCriticalSection(String resourceUrl) {
